@@ -20,7 +20,8 @@ namespace Jamcast5
     {
         ProgressForm progress = new ProgressForm();
 
-        public ProgressForm Progress {
+        public ProgressForm Progress
+        {
             get => progress ?? (progress = new ProgressForm());
             set => progress = value;
         }
@@ -58,9 +59,11 @@ namespace Jamcast5
                         try
                         {
 
-                        tc.Dispose();
-                        tc = new TcpClient();
-                        tc.Connect(ParseIPEndPoint(endpoint.Value<string>()));
+                            tc.Dispose();
+                            tc = new TcpClient();
+                            IPEndPoint remoteEP = ParseIPEndPoint(endpoint.Value<string>());
+                            tc.Connect(remoteEP);
+                            WriteProfile(remoteEP);
                         }
                         catch (Exception)
                         {
@@ -72,13 +75,51 @@ namespace Jamcast5
             });
         }
 
+        private void WriteProfile(IPEndPoint remoteEP)
+        {
+            var name = $"Jamcast-{remoteEP.Address.ToString()}";
+            var dname = $"Jamcast{remoteEP.Address.ToString().Replace(".", "")}";
+            var profiledir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio", "basic", "profiles");
+
+            Directory.CreateDirectory(Path.Combine(profiledir, dname));
+            File.WriteAllLines(Path.Combine(profiledir, dname, "basic.ini"),
+                new string[]
+                {
+                    "[General]",
+                    $"Name={name}",
+                    "[Video]",
+                    "BaseCX=1920",
+                    "BaseCY=1080",
+                    "OutputCX=1280",
+                    "OutputCY=720",
+                    "[Output]",
+                    "Mode=Advanced",
+                    "[AdvOut]",
+                    "TrackIndex=1",
+                    "RecType=FFmpeg",
+                    "RecTracks=1",
+                    "FFOutputToFile=false",
+                    "FFURL=udp://10.17.39.23:1234",
+                    "FFFormat=mpegts",
+                    "FFFormatMimeType=video/MP2T",
+                    "FFExtension=ts",
+                    "FFIgnoreCompat=true",
+                    "FFVEncoderId=28",
+                    "FFVEncoder=libx264",
+                    "FFAEncoderId=86018",
+                    "FFAEncoder=aac",
+                    "FFAudioTrack=1",
+                });
+        }
+
         private void InstallOBS(string obs)
         {
             var verb = Directory.Exists(obs) ? "Updating" : "Installing";
             Progress.SetProgress($"{verb} OBS", 0);
             var wc = new WebClient();
             wc.DownloadProgressChanged += Wc_DownloadProgressChanged;
-            wc.DownloadFileCompleted += (s,e) => {
+            wc.DownloadFileCompleted += (s, e) =>
+            {
                 //Progress.UnsetProgress();
                 Process.Start("obs.exe", "/S").WaitForExit();
                 InstallOBSWS(obs);
