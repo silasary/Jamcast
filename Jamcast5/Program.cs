@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Deployment.Application;
-using System.Linq;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,19 +15,74 @@ namespace Jamcast5
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Task.Run(new Action(CheckForUpdates));
-            new DumbClient().Run();
-            Application.Run();
+            foreach (Process proc in Process.GetProcesses())
+            {
+                if (proc.ProcessName.Equals(Process.GetCurrentProcess().ProcessName) && proc.Id != Process.GetCurrentProcess().Id)
+                {
+                    proc.Kill();
+                    break;
+                }
+            }
+            // Wait for process to close
+            Thread.Sleep(2000);
+            Mutex mutex = new System.Threading.Mutex(false, "JamCastMutex");
+            try
+            {
+                bool tryAgain = true;
+                while (tryAgain)
+                {
+                    bool result = false;
+                    try
+                    {
+                        result = mutex.WaitOne(0, false);
+                    }
+                    catch (AbandonedMutexException ex)
+                    {
+                        // No action required
+                        result = true;
+                    }
+                    if (result)
+                    {
+                        // Run the application
+                        tryAgain = false;
+                        Application.EnableVisualStyles();
+                        Application.SetCompatibleTextRenderingDefault(false);
+                        Task.Run(CheckForUpdates);
+                        var client = new DumbClient();
+                        client.Run();
+                        Application.Run(client);
+                    }
+                    else
+                    {
+                        foreach (Process proc in Process.GetProcesses())
+                        {
+                            if (proc.ProcessName.Equals(Process.GetCurrentProcess().ProcessName) && proc.Id != Process.GetCurrentProcess().Id)
+                            {
+                                proc.Kill();
+                                break;
+                            }
+                        }
+                        // Wait for process to close
+                        Thread.Sleep(2000);
+                    }
+                }
+            }
+            finally
+            {
+                if (mutex != null)
+                {
+                    mutex.Close();
+                    mutex = null;
+                }
+            }
         }
 
-        private static void CheckForUpdates()
+        private static async Task CheckForUpdates()
         {
             while (true)
             {
                 // Wait a minute.
-                Thread.Sleep(60000);
+                await Task.Delay(60000);
 
                 if (ApplicationDeployment.IsNetworkDeployed)
                 {
