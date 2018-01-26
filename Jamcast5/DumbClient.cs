@@ -55,9 +55,17 @@ namespace Jamcast5
                     }
                     else if (endpoint.Type != JTokenType.Null)
                     {
+                        try
+                        {
+
                         tc.Dispose();
                         tc = new TcpClient();
                         tc.Connect(ParseIPEndPoint(endpoint.Value<string>()));
+                        }
+                        catch (Exception)
+                        {
+                            // Shrug!
+                        }
                     }
                     lastendpoint = endpoint;
                 }
