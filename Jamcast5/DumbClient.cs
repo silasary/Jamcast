@@ -45,20 +45,24 @@ namespace Jamcast5
                 var tc = new TcpClient();
 
                 JToken lastendpoint = null;
+                DateTime lastPull = new DateTime();
 
                 while (true)
                 {
-                    var json = wc.DownloadString("https://melb18.jamhost.org/jamcast/ip");
-                    var endpoint = JToken.Parse(json);
-                    if (endpoint.Equals(lastendpoint))
+                    JToken endpoint = lastendpoint;
+                    if (DateTime.Now.Subtract(lastPull).TotalMinutes > 5)
                     {
-                        Thread.Sleep(TimeSpan.FromMinutes(5));
+                        var json = wc.DownloadString("https://melb18.jamhost.org/jamcast/ip");
+                        endpoint = JToken.Parse(json);
+                    }
+                    if (tc.Connected)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(30));
                     }
                     else if (endpoint.Type != JTokenType.Null)
                     {
                         try
                         {
-
                             tc.Dispose();
                             tc = new TcpClient();
                             IPEndPoint remoteEP = ParseIPEndPoint(endpoint.Value<string>());
@@ -68,6 +72,7 @@ namespace Jamcast5
                         catch (Exception)
                         {
                             // Shrug!
+                            Thread.Sleep(TimeSpan.FromSeconds(5));
                         }
                     }
                     lastendpoint = endpoint;
@@ -77,8 +82,15 @@ namespace Jamcast5
 
         private void WriteProfile(IPEndPoint remoteEP)
         {
-            var name = $"Jamcast-{remoteEP.Address.ToString()}";
-            var dname = $"Jamcast{remoteEP.Address.ToString().Replace(".", "")}";
+            var ip = remoteEP.Address.ToString();
+            WriteProfile("Primary", ip, 1234);
+            WriteProfile("Secondary", ip, 1235);
+        }
+
+        private static void WriteProfile(string suffix, string ip, int port)
+        {
+            var name = $"Jamcast-{suffix}";
+            var dname = $"Jamcast{suffix}";
             var profiledir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio", "basic", "profiles");
 
             Directory.CreateDirectory(Path.Combine(profiledir, dname));
@@ -99,7 +111,7 @@ namespace Jamcast5
                     "RecType=FFmpeg",
                     "RecTracks=1",
                     "FFOutputToFile=false",
-                    "FFURL=udp://10.17.39.23:1234",
+                    $"FFURL=udp://{ip}:{port}",
                     "FFFormat=mpegts",
                     "FFFormatMimeType=video/MP2T",
                     "FFExtension=ts",
