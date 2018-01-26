@@ -75,54 +75,83 @@ namespace Jamcast5
 
                 while (true)
                 {
-                    JToken endpoint = currentEndpoint;
-                    if (DateTime.Now.Subtract(lastPull).TotalMinutes > 5)
+                    try
                     {
-                        var json = await wc.DownloadStringTaskAsync("https://melb18.jamhost.org/jamcast/ip");
-                        endpoint = JToken.Parse(json);
-                    }
-
-                    if (tc.Connected)
-                    {
-                        if (endpoint != currentEndpoint)
+                        JToken endpoint = currentEndpoint;
+                        if (DateTime.Now.Subtract(lastPull).TotalMinutes > 5)
                         {
-                            // Endpoint changed, reconnect.
-                            tc.Client.Disconnect(true);
-                            tc = new TcpClient();
-                            continue;
+                            var json = await wc.DownloadStringTaskAsync("https://melb18.jamhost.org/jamcast/ip");
+                            endpoint = JToken.Parse(json);
                         }
-                        else if (tc.Client.Poll(0, SelectMode.SelectRead))
+
+                        if (tc.Connected)
                         {
-                            byte[] buff = new byte[1];
-                            if (tc.Client.Receive(buff, SocketFlags.Peek) == 0)
+                            if (!endpoint.Equals(currentEndpoint))
                             {
-                                // We have actively lost connection to the server, attempt reconnect.
+                                // Endpoint changed, reconnect.
                                 tc.Client.Disconnect(true);
                                 tc = new TcpClient();
                                 continue;
                             }
-                        }
+                            else if (tc.Client.Poll(0, SelectMode.SelectRead))
+                            {
+                                byte[] buff = new byte[1];
+                                try
+                                {
+                                    if (tc.Client.Receive(buff, SocketFlags.Peek) == 0)
+                                    {
+                                        // We have actively lost connection to the server, attempt reconnect.
+                                        tc.Client.Disconnect(true);
+                                        tc = new TcpClient();
+                                        continue;
+                                    }
+                                }
+                                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+                                {
+                                    // We have actively lost connection to the server, attempt reconnect.
+                                    tc.Client.Disconnect(true);
+                                    tc = new TcpClient();
+                                    continue;
+                                }
+                            }
 
-                        await Task.Delay(500);
+                            await Task.Delay(500);
+                        }
+                        else if (endpoint.Type != JTokenType.Null)
+                        {
+                            try
+                            {
+                                IPEndPoint remoteEP = ParseIPEndPoint(endpoint.Value<string>());
+
+                                tc.Dispose();
+                                tc = new TcpClient();
+
+                                var result = tc.BeginConnect(remoteEP.Address, remoteEP.Port, null, null);
+                                var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+                                if (!success)
+                                {
+                                    try { tc.EndConnect(result); } catch { }
+                                    tc.Dispose();
+                                    tc = new TcpClient();
+                                    continue;
+                                }
+
+                                tc.EndConnect(result);
+                                WriteProfile(remoteEP);
+                                hasWrittenProfile = true;
+                            }
+                            catch (Exception)
+                            {
+                                // Shrug!
+                                await Task.Delay(5000);
+                            }
+                        }
+                        currentEndpoint = endpoint;
                     }
-                    else if (endpoint.Type != JTokenType.Null)
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            tc.Dispose();
-                            tc = new TcpClient();
-                            IPEndPoint remoteEP = ParseIPEndPoint(endpoint.Value<string>());
-                            tc.Connect(remoteEP);
-                            WriteProfile(remoteEP);
-                            hasWrittenProfile = true;
-                        }
-                        catch (Exception)
-                        {
-                            // Shrug!
-                            await Task.Delay(5000);
-                        }
+
                     }
-                    currentEndpoint = endpoint;
                 }
             });
         }
