@@ -1,9 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,6 +37,31 @@ namespace Jamcast5
                 return;
             }
             LaunchObs(obs);
+            Task.Factory.StartNew(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                var wc = new WebClient();
+                var tc = new TcpClient();
+
+                JToken lastendpoint = null;
+
+                while (true)
+                {
+                    var json = wc.DownloadString("https://melb18.jamhost.org/jamcast/ip");
+                    var endpoint = JToken.Parse(json);
+                    if (endpoint.Equals(lastendpoint))
+                    {
+                        Thread.Sleep(TimeSpan.FromMinutes(5));
+                    }
+                    else if (endpoint.Type != JTokenType.Null)
+                    {
+                        tc.Dispose();
+                        tc = new TcpClient();
+                        tc.Connect(ParseIPEndPoint(endpoint.Value<string>()));
+                    }
+                    lastendpoint = endpoint;
+                }
+            });
         }
 
         private void InstallOBS(string obs)
@@ -102,6 +130,34 @@ namespace Jamcast5
         private void Wc_DownloadProgressChanged(object sender, DownloadProgressChangedEventArgs e)
         {
             Progress.SetProgress(null, e.ProgressPercentage);
+        }
+
+        // https://stackoverflow.com/questions/2727609/best-way-to-create-ipendpoint-from-string
+        public static IPEndPoint ParseIPEndPoint(string endPoint)
+        {
+            string[] ep = endPoint.Split(':');
+            if (ep.Length < 2) throw new FormatException("Invalid endpoint format");
+            IPAddress ip;
+            if (ep.Length > 2)
+            {
+                if (!IPAddress.TryParse(string.Join(":", ep, 0, ep.Length - 1), out ip))
+                {
+                    throw new FormatException("Invalid ip-adress");
+                }
+            }
+            else
+            {
+                if (!IPAddress.TryParse(ep[0], out ip))
+                {
+                    throw new FormatException("Invalid ip-adress");
+                }
+            }
+            int port;
+            if (!int.TryParse(ep[ep.Length - 1], NumberStyles.None, NumberFormatInfo.CurrentInfo, out port))
+            {
+                throw new FormatException("Invalid port");
+            }
+            return new IPEndPoint(ip, port);
         }
     }
 }
