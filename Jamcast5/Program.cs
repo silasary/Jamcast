@@ -18,6 +18,7 @@ namespace Jamcast5
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Task.Run(new Action(CheckForUpdates));
             new DumbClient().Run();
             Application.Run();
         }
