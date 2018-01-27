@@ -30,6 +30,7 @@
         {
             this.controllerStatus = new System.Windows.Forms.TextBox();
             this.logMessages = new System.Windows.Forms.TextBox();
+            this.wsLogs = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // controllerStatus
@@ -41,26 +42,40 @@
             this.controllerStatus.Multiline = true;
             this.controllerStatus.Name = "controllerStatus";
             this.controllerStatus.ReadOnly = true;
-            this.controllerStatus.Size = new System.Drawing.Size(519, 239);
+            this.controllerStatus.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.controllerStatus.Size = new System.Drawing.Size(963, 239);
             this.controllerStatus.TabIndex = 0;
             // 
             // logMessages
             // 
-            this.logMessages.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.logMessages.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.logMessages.Location = new System.Drawing.Point(0, 245);
             this.logMessages.Multiline = true;
             this.logMessages.Name = "logMessages";
             this.logMessages.ReadOnly = true;
-            this.logMessages.Size = new System.Drawing.Size(519, 156);
+            this.logMessages.Size = new System.Drawing.Size(547, 395);
             this.logMessages.TabIndex = 1;
+            // 
+            // wsLogs
+            // 
+            this.wsLogs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.wsLogs.Location = new System.Drawing.Point(553, 245);
+            this.wsLogs.Multiline = true;
+            this.wsLogs.Name = "wsLogs";
+            this.wsLogs.ReadOnly = true;
+            this.wsLogs.Size = new System.Drawing.Size(410, 395);
+            this.wsLogs.TabIndex = 2;
             // 
             // ControllerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(519, 401);
+            this.ClientSize = new System.Drawing.Size(963, 640);
+            this.Controls.Add(this.wsLogs);
             this.Controls.Add(this.logMessages);
             this.Controls.Add(this.controllerStatus);
+            this.DoubleBuffered = true;
             this.Name = "ControllerForm";
             this.Text = "JamCast Controller";
             this.ResumeLayout(false);
@@ -72,6 +87,7 @@
 
         private System.Windows.Forms.TextBox controllerStatus;
         private System.Windows.Forms.TextBox logMessages;
+        private System.Windows.Forms.TextBox wsLogs;
     }
 }
 

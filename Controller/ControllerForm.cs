@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,51 +14,78 @@ namespace Controller
     public partial class ControllerForm : Form
     {
         private readonly TcpListener _listener;
-        private readonly Task _listenerTask;
-        private readonly object _periodicRemoteClientConfigurationTask;
+        private Thread _listenerTask;
+        private Thread _periodicRemoteClientConfigurationTask;
         private readonly HashSet<EndPoint> _remoteEndpoints;
         private readonly Dictionary<EndPoint, OBSWebsocket> _websockets;
         private readonly OBSWebsocket _controllerObs;
-        private readonly Task _controllerTask;
+        private readonly HashSet<EndPoint> _falconNineIsInStartup;
+        private Thread _controllerTask;
         private bool _currentInputIsPrimary;
         private bool _needsPrepIntoStandby;
         private EndPoint _standbyInput;
         private EndPoint _currentInput;
         private Random _random;
+        private readonly UdpForwarder _primaryForwarder;
+        private readonly UdpForwarder _secondaryForwarder;
 
         public ControllerForm()
         {
             InitializeComponent();
+
+            _primaryForwarder = new UdpForwarder(1234, 1237);
+            _secondaryForwarder = new UdpForwarder(1235, 1238);
+
+            _primaryForwarder.OnError = (ex) =>
+            {
+                Log(null, "Primary forwarder: " + ex);
+            };
+            _secondaryForwarder.OnError = (ex) =>
+            {
+                Log(null, "Secondary forwarder: " + ex);
+            };
 
             _random = new Random();
 
             _remoteEndpoints = new HashSet<EndPoint>();
             _websockets = new Dictionary<EndPoint, OBSWebsocket>();
             _listener = new TcpListener(IPAddress.Any, 8080);
-            _listenerTask = Task.Run(RunListener);
+            _listenerTask = StartThread("TCP Listener", RunListener);
+            _falconNineIsInStartup = new HashSet<EndPoint>();
 
             _standbyInput = null;
             _currentInput = null;
             _currentInputIsPrimary = false;
             _needsPrepIntoStandby = true;
 
-            _periodicRemoteClientConfigurationTask = Task.Run(RemoteClientConfiguration);
+            _periodicRemoteClientConfigurationTask = StartThread("Remote Client Config", RemoteClientConfiguration);
 
             _controllerObs = new OBSWebsocket();
             RegisterWebsocketEvents(_controllerObs);
             _controllerObs.Connect("ws://localhost:4444", null);
 
-            _controllerTask = Task.Run(ControllerTask);
+            _controllerTask = StartThread("OBS Controller", ControllerTask);
+        }
+
+        private Thread StartThread(string name, Action action)
+        {
+            var t = new Thread(new ThreadStart(() => { action(); }));
+            t.Name = name;
+            t.IsBackground = true;
+            t.Start();
+            return t;
         }
 
         // This task is responsible for controlling the local OBS which has VLC sources
         // and receives inputs, transitioning between different inputs as needed.
-        private async Task ControllerTask()
+        private void ControllerTask()
         {
             while (true)
             {
                 try
                 {
+                    Log(null, "Switching to Secondary source...");
+
                     _controllerObs.SendRequest("SetSceneItemProperties", JObject.FromObject(new
                     {
                         item = "Primary Input Source",
@@ -78,11 +106,13 @@ namespace Controller
 
                     _currentInputIsPrimary = false;
 
-                    await Task.Delay(1500);
+                    Thread.Sleep(1500);
 
                     _needsPrepIntoStandby = true;
 
-                    await Task.Delay(28500);
+                    Thread.Sleep(28500);
+
+                    Log(null, "Switching to Primary source...");
 
                     _controllerObs.SendRequest("SetSceneItemProperties", JObject.FromObject(new
                     {
@@ -104,11 +134,11 @@ namespace Controller
 
                     _currentInputIsPrimary = true;
 
-                    await Task.Delay(1500);
+                    Thread.Sleep(1500);
 
                     _needsPrepIntoStandby = true;
 
-                    await Task.Delay(28500);
+                    Thread.Sleep(28500);
                 }
                 catch (Exception ex)
                 {
@@ -119,22 +149,28 @@ namespace Controller
 
         // This task goes through the client and configures their scenes, profiles, etc.
         // to be ready for streaming.
-        private async Task RemoteClientConfiguration()
+        private void RemoteClientConfiguration()
         {
             while (true)
             {
                 try
                 {
-                    if (!_needsPrepIntoStandby)
+                    if (!_needsPrepIntoStandby && !(_remoteEndpoints.Count > 2 && _currentInput == null && _standbyInput == null))
                     {
-                        await Task.Delay(500);
+                        Thread.Sleep(500);
                         continue;
                     }
+
+                    Log(null, "Prepping standby screen");
+
+                    Log(null, "Current standby is: " + (_standbyInput == null ? "<none>" : _standbyInput.ToString()));
+                    Log(null, "Current active is: " + (_currentInput == null ? "<none>" : _currentInput.ToString()));
 
                     var endpoints = _remoteEndpoints.ToList();
                     if (endpoints.Count == 0)
                     {
                         // Can't prep anything - not enough clients.
+                        Log(null, "No clients, nothing to prep into standby slot");
                         _needsPrepIntoStandby = false;
                         continue;
                     }
@@ -143,6 +179,40 @@ namespace Controller
                     {
                         // Tell our only endpoint to stream into the current display. This will look janky
                         // until another client is lined up.
+                        Log(null, "Only one client, prepping into standby only if not active");
+                        if (!endpoints[0].Equals(_standbyInput) && !endpoints[0].Equals(_currentInput))
+                        {
+                            Log(null, "Not in standby or current");
+
+                            var websocketSingle = _websockets[endpoints[0]];
+                            if (websocketSingle == null)
+                            {
+                                Log(null, "WebSocket was null! WHAT?");
+                                _needsPrepIntoStandby = false;
+                                continue;
+                            }
+                            if (_currentInputIsPrimary)
+                            {
+                                Log(null, "Setting profile to Secondary");
+                                websocketSingle.SetCurrentProfile("Jamcast-Secondary");
+                            }
+                            else
+                            {
+                                Log(null, "Setting profile to Primary");
+                                websocketSingle.SetCurrentProfile("Jamcast-Primary");
+                            }
+                            _standbyInput = endpoints[0];
+                            try
+                            {
+                                Log(null, "Telling client at " + _standbyInput + " start streaming");
+                                websocketSingle.StartRecording();
+                            }
+                            catch (Exception ex)
+                            {
+                                Log(null, _standbyInput + " during recording start: " + ex.ToString());
+                            }
+                            _needsPrepIntoStandby = false;
+                        }
                         _needsPrepIntoStandby = false;
                         continue;
                     }
@@ -154,40 +224,94 @@ namespace Controller
 
                     if (_standbyInput != null)
                     {
-                        var oldWebsocket = _websockets[_standbyInput];
-                        try
+                        if (endpoints.Count > 2)
                         {
-                            oldWebsocket.StopRecording();
+                            // Enough endpoints that we can rotate away from this one.
+                            endpoints.Remove(_standbyInput);
                         }
-                        catch { }
+
+                        Log(null, "Requesting client at " + _standbyInput + " stop streaming");
+                        if (_websockets.ContainsKey(_standbyInput))
+                        {
+                            var oldWebsocket = _websockets[_standbyInput];
+                            try
+                            {
+                                oldWebsocket.StopRecording();
+                            }
+                            catch (Exception ex)
+                            {
+                                Log(null, _standbyInput + " during recording stop: " + ex.ToString());
+                            }
+                        }
+                        else
+                        {
+                            Log(null, "(Websocket for " + _standbyInput + " isn't around any more, nothing to do)");
+                        }
+
+                        _standbyInput = null;
                     }
 
                     var nextIdx = _random.Next(0, endpoints.Count - 1);
                     var nextInput = endpoints[nextIdx];
 
+                    Log(null, "Selected " + nextInput + " as next standby");
+
                     // Tell the next endpoint to start streaming into the right slot.
                     var websocket = _websockets[nextInput];
+                    if (!websocket.IsConnected)
+                    {
+                        Log(null, "Need to pick another websocket (this one isn't ready)...");
+                        Thread.Sleep(1000);
+                        continue;
+                    }
                     if (_currentInputIsPrimary)
                     {
+                        Log(null, "Setting profile to Secondary");
                         websocket.SetCurrentProfile("Jamcast-Secondary");
                     }
                     else
                     {
+                        Log(null, "Setting profile to Primary");
                         websocket.SetCurrentProfile("Jamcast-Primary");
                     }
                     _standbyInput = nextInput;
                     try
                     {
+                        Log(null, "Telling client at " + _standbyInput + " start streaming");
                         websocket.StartRecording();
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Log(null, _standbyInput + " during recording start: " + ex.ToString());
+                    }
                     _needsPrepIntoStandby = false;
 
-                    await Task.Delay(1000);
+                    if (_currentInputIsPrimary)
+                    {
+                        _secondaryForwarder.ExpectedIpAddress = ((IPEndPoint)_standbyInput).Address;
+                    }
+                    else
+                    {
+                        _primaryForwarder.ExpectedIpAddress = ((IPEndPoint)_standbyInput).Address;
+                    }
+
+                    Thread.Sleep(1000);
                 }
                 catch (Exception ex)
                 {
-                    Log(null, ex.ToString());
+                    try
+                    {
+                        Log(null, ex.ToString());
+                    }
+                    catch { }
+                }
+                finally
+                {
+                    try
+                    {
+                        UpdateStatus();
+                    }
+                    catch { }
                 }
             }
         }
@@ -195,7 +319,28 @@ namespace Controller
         private void RegisterWebsocketEvents(OBSWebsocket websocket)
         {
             websocket.Connected += (sender, args) => Log(websocket, "Connected");
-            websocket.Disconnected += (sender, args) => Log(websocket, "Disconnected");
+            websocket.Disconnected += (sender, args) =>
+            {
+                Log(websocket, "Disconnected");
+
+                Log(websocket, "Terminating associated TCP connection to force client to reconnect / reinit");
+                var associatedEndpoint = _websockets.Keys.FirstOrDefault(x => _websockets[x].Equals(websocket));
+                if (associatedEndpoint == null)
+                {
+                    Log(websocket, "Unable to find associated TCP endpoint");
+                }
+                else if (_falconNineIsInStartup.Contains(associatedEndpoint))
+                {
+                    Log(websocket, "Falcon nine is in startup, not disconnecting");
+                }
+                else
+                { 
+                    _remoteEndpoints.Remove(associatedEndpoint);
+                    _websockets.Remove(associatedEndpoint);
+
+                    UpdateStatus();
+                }
+            };
             websocket.OBSExit += (sender, args) => Log(websocket, "OBSExit");
             websocket.PreviewSceneChanged += (sender, args) => Log(websocket, "PreviewSceneChanged");
             websocket.ProfileChanged += (sender, args) => Log(websocket, "ProfileChanged");
@@ -230,10 +375,20 @@ namespace Controller
                 return;
             }
 
-            logMessages.Text += $"{websocket?.WSConnection?.Url?.ToString() ?? "core"}: {ev}" + Environment.NewLine;
-            logMessages.SelectionLength = 0;
-            logMessages.SelectionStart = logMessages.Text.Length;
-            logMessages.ScrollToCaret();
+            if (websocket != null)
+            {
+                wsLogs.Text += $"{websocket?.WSConnection?.Url?.ToString() ?? "??"}: {ev}" + Environment.NewLine;
+                wsLogs.SelectionLength = 0;
+                wsLogs.SelectionStart = wsLogs.Text.Length;
+                wsLogs.ScrollToCaret();
+            }
+            else
+            {
+                logMessages.Text += $"core: {ev}" + Environment.NewLine;
+                logMessages.SelectionLength = 0;
+                logMessages.SelectionStart = logMessages.Text.Length;
+                logMessages.ScrollToCaret();
+            }
         }
 
         private void UpdateStatus()
@@ -262,61 +417,180 @@ namespace Controller
             controllerStatus.Text = status;
         }
 
-        private async Task RunListener()
+        private void RunListener()
         {
             _listener.Start();
             while (true)
             {
-                var client = await _listener.AcceptTcpClientAsync();
-                if (!_remoteEndpoints.Contains(client.Client.RemoteEndPoint))
+                var client = _listener.AcceptTcpClient();
+                Log(null, "Accepted client at endpoint: " + client.Client.RemoteEndPoint.ToString());
+                StartThread("Accept TCP Client: " + client.Client.RemoteEndPoint, () =>
                 {
-                    _remoteEndpoints.Add(client.Client.RemoteEndPoint);
-                    var webSocketEndpoint = new IPEndPoint(((IPEndPoint)client.Client.RemoteEndPoint).Address, 4444);
-                    var websocket = new OBSWebsocket();
-                    _websockets[client.Client.RemoteEndPoint] = websocket;
-                    RegisterWebsocketEvents(websocket);
-                    websocket.Connect("ws://" + webSocketEndpoint.ToString(), null);
-                    UpdateStatus();
-                }
-#pragma warning disable CS4014
-                Task.Run(async () =>
+                    AcceptClient(client);
+                });
+            }
+        }
+
+        private void AcceptClient(TcpClient client)
+        {
+            if (!_remoteEndpoints.Contains(client.Client.RemoteEndPoint))
+            {
+                Log(null, "Client not already seen, adding to remote endpoints and adding to WS list");
+                _remoteEndpoints.Add(client.Client.RemoteEndPoint);
+
+                var webSocketEndpoint = new IPEndPoint(((IPEndPoint)client.Client.RemoteEndPoint).Address, 4444);
+                var websocket = new OBSWebsocket();
+                _websockets[client.Client.RemoteEndPoint] = websocket;
+                RegisterWebsocketEvents(websocket);
+
+                _falconNineIsInStartup.Add(client.Client.RemoteEndPoint);
+
+                Log(null, "Sleeping for 2 seconds while we wait for OBS to start up on the remote client");
+                Thread.Sleep(2000);
+                while (true)
                 {
+                    if (!_remoteEndpoints.Contains(client.Client.RemoteEndPoint))
+                    {
+                        Log(null, "Remote endpoint has been disconnected (error: this should never happen)");
+                        client.Client.Disconnect(true);
+                        return;
+                    }
+
+                    Log(null, "Connecting to OBS websocket at " + webSocketEndpoint.ToString());
                     try
                     {
-                        while (client.Connected)
+                        websocket.Connect("ws://" + webSocketEndpoint.ToString(), null);
+                        if (!websocket.IsConnected)
                         {
-                            if (client.Client.Poll(0, SelectMode.SelectRead))
+                            Log(null, "Unable to connect to WS... sleeping 2 seconds and trying again");
+                            Thread.Sleep(2000);
+                            continue;
+                        }
+
+                        Log(null, "Connected to OBS websocket at " + webSocketEndpoint.ToString());
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log(null, "Unable to connect to WS... sleeping 2 seconds and trying again");
+                        Thread.Sleep(2000);
+
+                        // Check if TCP has disconnected
+                        if (client.Client.Poll(0, SelectMode.SelectRead))
+                        {
+                            byte[] buff = new byte[1];
+                            try
                             {
-                                byte[] buff = new byte[1];
                                 if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
                                 {
+                                    Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + " during OBS connect, disconnecting");
+
                                     _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
                                     _websockets[client.Client.RemoteEndPoint].Disconnect();
                                     UpdateStatus();
                                     return;
                                 }
                             }
+                            catch (SocketException exx) when (exx.SocketErrorCode == SocketError.ConnectionReset)
+                            {
+                                Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + " during OBS connect, disconnecting");
 
-                            await Task.Delay(500);
+                                _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
+                                _websockets[client.Client.RemoteEndPoint].Disconnect();
+                                UpdateStatus();
+                                return;
+                            }
                         }
-                    }
-                    catch
-                    {
+
+                        Thread.Sleep(500);
+
                         try
                         {
-                            client.Client.Disconnect(true);
+                            client.Client.Send(new byte[] { 1 });
                         }
                         catch
                         {
+                            Log(null, "Unable to send data to client during OBS connect: " + client.Client.RemoteEndPoint.ToString());
+                        }
+                    }
+                }
+
+                _falconNineIsInStartup.Remove(client.Client.RemoteEndPoint);
+                
+                Log(null, "Updating client list");
+                UpdateStatus();
+            }
+
+            StartThread("Handle TCP Client: " + client.Client.RemoteEndPoint, () =>
+            {
+                try
+                {
+                    Log(null, "Starting handle loop for " + client.Client.RemoteEndPoint);
+                    while (client.Connected)
+                    {
+                        if (!_remoteEndpoints.Contains(client.Client.RemoteEndPoint))
+                        {
+                            Log(null, "Remote endpoint has been disconnected (probably due to OBS disconnect)");
+                            client.Client.Disconnect(true);
+                            return;
                         }
 
-                        _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
-                        _websockets[client.Client.RemoteEndPoint].Disconnect();
-                        UpdateStatus();
+                        if (client.Client.Poll(0, SelectMode.SelectRead))
+                        {
+                            byte[] buff = new byte[1];
+                            try
+                            {
+                                if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
+                                {
+                                    Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + ", disconnecting");
+
+                                    _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
+                                    _websockets[client.Client.RemoteEndPoint].Disconnect();
+                                    UpdateStatus();
+                                    return;
+                                }
+                            }
+                            catch (SocketException exx) when (exx.SocketErrorCode == SocketError.ConnectionReset)
+                            {
+                                Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + ", disconnecting");
+
+                                _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
+                                _websockets[client.Client.RemoteEndPoint].Disconnect();
+                                UpdateStatus();
+                                return;
+                            }
+                        }
+
+                        Thread.Sleep(500);
+
+                        try
+                        {
+                            client.Client.Send(new byte[] { 1 });
+                        }
+                        catch
+                        {
+                            Log(null, "Unable to send data to client: " + client.Client.RemoteEndPoint.ToString());
+                        }
                     }
-                });
-#pragma warning restore CS4014
-            }
+                }
+                catch (Exception ex)
+                {
+                    Log(null, "Exception on " + client.Client.RemoteEndPoint + ": " + ex.ToString());
+
+                    try
+                    {
+                        client.Client.Disconnect(true);
+                    }
+                    catch (Exception exx)
+                    {
+                        Log(null, "Exception on disconnect of " + client.Client.RemoteEndPoint + ": " + exx.ToString());
+                    }
+
+                    _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
+                    _websockets[client.Client.RemoteEndPoint].Disconnect();
+                    UpdateStatus();
+                }
+            });
         }
     }
 }

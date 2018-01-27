@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -14,6 +15,9 @@ namespace Controller
         [STAThread]
         static void Main()
         {
+            ThreadPool.SetMaxThreads(32, 32);
+            ThreadPool.SetMinThreads(32, 32);
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new ControllerForm());

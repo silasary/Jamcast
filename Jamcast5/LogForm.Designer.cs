@@ -47,6 +47,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 262);
             this.Controls.Add(this.logBox);
+            this.DoubleBuffered = true;
             this.Name = "LogForm";
             this.Text = "LogForm";
             this.ResumeLayout(false);
