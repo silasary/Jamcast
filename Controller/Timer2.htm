@@ -35,7 +35,7 @@
                         hrsuf = '';
                     }
                     timerElem.innerText = 
-                        duration.asHours().toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ' +
+                        Math.floor(duration.asHours()).toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ' +
                         duration.minutes().toFixed(0).padStart(2, '0') + ' min ' +
                         duration.seconds().toFixed(0).padStart(2, '0') + ' sec ' +
                         duration.milliseconds().toFixed(0).padStart(3, '0') + ' ms';
