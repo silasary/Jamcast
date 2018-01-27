@@ -45,6 +45,18 @@ namespace Jamcast5
             };
         }
 
+        internal void Notify(string boop)
+        {
+            try
+            {
+                trayIcon.ShowBalloonTip(1000, "Jamcast", boop, ToolTipIcon.Info);
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
         private void Exit(object sender, EventArgs e)
         {
             trayIcon.Visible = false;
@@ -125,7 +137,7 @@ namespace Jamcast5
 
                                 tc.Dispose();
                                 tc = new TcpClient();
-
+                                Notify($"Connecting to Jamhost controller at {remoteEP}");
                                 var result = tc.BeginConnect(remoteEP.Address, remoteEP.Port, null, null);
                                 var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
                                 if (!success)
@@ -271,7 +283,7 @@ namespace Jamcast5
                 {
                     if (Process.GetProcessesByName("obs64").Length == 0)
                     {
-                        Progress.SetProgress("Launching OBS", 0);
+                        //Progress.SetProgress("Launching OBS", 0);
                         //Progress.UnsetProgress();
                         AcceptLicence();
                         Thread.Sleep(TimeSpan.FromSeconds(1));
