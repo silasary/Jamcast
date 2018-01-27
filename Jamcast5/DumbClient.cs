@@ -90,6 +90,8 @@ namespace Jamcast5
                 logForm = null;
             };
             logForm.Show();
+
+            Log("Showing log window");
         }
 
         internal void Notify(string boop)
@@ -128,7 +130,7 @@ namespace Jamcast5
                 return;
             }
             Log("It does, scheduling launch of OBS after client connect");
-            LaunchObs(obs);
+            LaunchObs(obs, false);
             Task.Factory.StartNew(async () =>
             {
                 Thread.CurrentThread.IsBackground = true;
@@ -149,7 +151,7 @@ namespace Jamcast5
                             var json = await wc.DownloadStringTaskAsync("https://melb18.jamhost.org/jamcast/ip");
                             endpoint = JToken.Parse(json);
 
-                        Log("Controller endpoint is now: " + endpoint);
+                            Log("Controller endpoint is now: " + endpoint);
                         }
 
                         if (tc.Connected)
@@ -198,6 +200,16 @@ namespace Jamcast5
                             }
 
                             await Task.Delay(500);
+
+                            try
+                            {
+                                tc.Client.Send(new byte[] { 1 });
+                            }
+                            catch (Exception ex)
+                            {
+                                Log("Unable to send data to controller");
+                                Log(ex.ToString());
+                            }
                         }
                         else if (endpoint.Type != JTokenType.Null)
                         {
@@ -210,11 +222,13 @@ namespace Jamcast5
 
                                 tc.Dispose();
                                 tc = new TcpClient();
-                                Notify($"Connecting to Jamhost controller at {remoteEP}");
+                                //Notify($"Connecting to Jamhost controller at {remoteEP}");
                                 var result = tc.BeginConnect(remoteEP.Address, remoteEP.Port, null, null);
-                                var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+                                var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(5));
                                 if (!success)
                                 {
+                                    Log("Unable to connect to controller within 5 seconds!");
+
                                     try { tc.EndConnect(result); } catch { }
                                     tc.Dispose();
                                     tc = new TcpClient();
@@ -222,9 +236,13 @@ namespace Jamcast5
                                 }
 
                                 tc.EndConnect(result);
-                                WriteProfile(remoteEP);
+                                var dirty = WriteProfile(remoteEP);
                                 hasWrittenProfile = true;
-                                LaunchObs(obs);
+                                if (dirty)
+                                {
+                                    LaunchObs(obs, true);
+                                }
+
                                 Log("Connection established");
                             }
                             catch (Exception ex)
@@ -245,24 +263,25 @@ namespace Jamcast5
             });
         }
 
-        private void WriteProfile(IPEndPoint remoteEP)
+        private bool WriteProfile(IPEndPoint remoteEP)
         {
             Log("Writing OBS profiles for " + remoteEP.ToString());
             var ip = remoteEP.Address.ToString();
-            WriteProfile("Primary", ip, 1234);
-            WriteProfile("Secondary", ip, 1235);
-            WriteScene("Untitled");
+            var dirty = false;
+            dirty = WriteProfile("Primary", ip, 1234) || dirty;
+            dirty = WriteProfile("Secondary", ip, 1235) || dirty;
+            dirty = WriteScene("Jamcast") || dirty;
+            return dirty;
         }
 
-        private static void WriteProfile(string suffix, string ip, int port)
+        private static bool WriteProfile(string suffix, string ip, int port)
         {
             var name = $"Jamcast-{suffix}";
             var dname = $"Jamcast{suffix}";
             var profiledir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio", "basic", "profiles");
 
             Directory.CreateDirectory(Path.Combine(profiledir, dname));
-            File.WriteAllLines(Path.Combine(profiledir, dname, "basic.ini"),
-                new string[]
+            string[] contents = new string[]
                 {
                     "[General]",
                     $"Name={name}",
@@ -288,10 +307,17 @@ namespace Jamcast5
                     "FFAEncoderId=86018",
                     "FFAEncoder=aac",
                     "FFAudioTrack=1",
-                });
+                };
+            string path = Path.Combine(profiledir, dname, "basic.ini");
+            if (!string.Join("|", File.ReadAllLines(path)).Equals(string.Join("|", contents)))
+            {
+                File.WriteAllLines(path, contents);
+                return true;
+            }
+            return false;
         }
 
-        private static void WriteScene(string name)
+        private static bool WriteScene(string name)
         {
             var scenedir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio", "basic", "scenes");
             var sceneJson = Path.Combine(scenedir, name + ".json");
@@ -301,7 +327,9 @@ namespace Jamcast5
                 {
                     "{\r\n    \"DesktopAudioDevice1\": {\r\n        \"deinterlace_field_order\": 0,\r\n        \"deinterlace_mode\": 0,\r\n        \"enabled\": true,\r\n        \"flags\": 0,\r\n        \"hotkeys\": {\r\n            \"libobs.mute\": [],\r\n            \"libobs.push-to-mute\": [],\r\n            \"libobs.push-to-talk\": [],\r\n            \"libobs.unmute\": []\r\n        },\r\n        \"id\": \"wasapi_output_capture\",\r\n        \"mixers\": 255,\r\n        \"monitoring_type\": 0,\r\n        \"muted\": false,\r\n        \"name\": \"Desktop Audio\",\r\n        \"private_settings\": {},\r\n        \"push-to-mute\": false,\r\n        \"push-to-mute-delay\": 0,\r\n        \"push-to-talk\": false,\r\n        \"push-to-talk-delay\": 0,\r\n        \"settings\": {\r\n            \"device_id\": \"default\"\r\n        },\r\n        \"sync\": 0,\r\n        \"volume\": 1.0\r\n    },\r\n    \"current_program_scene\": \"Scene\",\r\n    \"current_scene\": \"Scene\",\r\n    \"current_transition\": \"Fade\",\r\n    \"modules\": {\r\n        \"auto-scene-switcher\": {\r\n            \"active\": false,\r\n            \"interval\": 300,\r\n            \"non_matching_scene\": \"\",\r\n            \"switch_if_not_matching\": false,\r\n            \"switches\": []\r\n        },\r\n        \"captions\": {\r\n            \"enabled\": false,\r\n            \"lang_id\": 1033,\r\n            \"provider\": \"mssapi\",\r\n            \"source\": \"\"\r\n        },\r\n        \"output-timer\": {\r\n            \"autoStartRecordTimer\": false,\r\n            \"autoStartStreamTimer\": false,\r\n            \"recordTimerHours\": 0,\r\n            \"recordTimerMinutes\": 0,\r\n            \"recordTimerSeconds\": 30,\r\n            \"streamTimerHours\": 0,\r\n            \"streamTimerMinutes\": 0,\r\n            \"streamTimerSeconds\": 30\r\n        },\r\n        \"scripts-tool\": []\r\n    },\r\n    \"name\": \"Untitled\",\r\n    \"preview_locked\": false,\r\n    \"quick_transitions\": [\r\n        {\r\n            \"duration\": 300,\r\n            \"hotkeys\": [],\r\n            \"id\": 1,\r\n            \"name\": \"Cut\"\r\n        },\r\n        {\r\n            \"duration\": 300,\r\n            \"hotkeys\": [],\r\n            \"id\": 2,\r\n            \"name\": \"Fade\"\r\n        }\r\n    ],\r\n    \"saved_multiview_projectors\": [\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        }\r\n    ],\r\n    \"saved_preview_projectors\": [\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        }\r\n    ],\r\n    \"saved_projectors\": [\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        }\r\n    ],\r\n    \"saved_studio_preview_projectors\": [\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        }\r\n    ],\r\n    \"scaling_enabled\": false,\r\n    \"scaling_level\": 0,\r\n    \"scaling_off_x\": 0.0,\r\n    \"scaling_off_y\": 0.0,\r\n    \"scene_order\": [\r\n        {\r\n            \"name\": \"Scene\"\r\n        }\r\n    ],\r\n    \"sources\": [\r\n        {\r\n            \"deinterlace_field_order\": 0,\r\n            \"deinterlace_mode\": 0,\r\n            \"enabled\": true,\r\n            \"flags\": 0,\r\n            \"hotkeys\": {\r\n                \"OBSBasic.SelectScene\": [],\r\n                \"libobs.hide_scene_item.Display Capture\": [],\r\n                \"libobs.show_scene_item.Display Capture\": []\r\n            },\r\n            \"id\": \"scene\",\r\n            \"mixers\": 0,\r\n            \"monitoring_type\": 0,\r\n            \"muted\": false,\r\n            \"name\": \"Scene\",\r\n            \"private_settings\": {},\r\n            \"push-to-mute\": false,\r\n            \"push-to-mute-delay\": 0,\r\n            \"push-to-talk\": false,\r\n            \"push-to-talk-delay\": 0,\r\n            \"settings\": {\r\n                \"id_counter\": 1,\r\n                \"items\": [\r\n                    {\r\n                        \"align\": 5,\r\n                        \"bounds\": {\r\n                            \"x\": 0.0,\r\n                            \"y\": 0.0\r\n                        },\r\n                        \"bounds_align\": 0,\r\n                        \"bounds_type\": 0,\r\n                        \"crop_bottom\": 0,\r\n                        \"crop_left\": 0,\r\n                        \"crop_right\": 0,\r\n                        \"crop_top\": 0,\r\n                        \"id\": 1,\r\n                        \"locked\": false,\r\n                        \"name\": \"Display Capture\",\r\n                        \"pos\": {\r\n                            \"x\": 0.0,\r\n                            \"y\": 0.0\r\n                        },\r\n                        \"private_settings\": {},\r\n                        \"rot\": 0.0,\r\n                        \"scale\": {\r\n                            \"x\": 1.0,\r\n                            \"y\": 1.0\r\n                        },\r\n                        \"scale_filter\": \"disable\",\r\n                        \"visible\": true\r\n                    }\r\n                ]\r\n            },\r\n            \"sync\": 0,\r\n            \"volume\": 1.0\r\n        },\r\n        {\r\n            \"deinterlace_field_order\": 0,\r\n            \"deinterlace_mode\": 0,\r\n            \"enabled\": true,\r\n            \"flags\": 0,\r\n            \"hotkeys\": {},\r\n            \"id\": \"monitor_capture\",\r\n            \"mixers\": 0,\r\n            \"monitoring_type\": 0,\r\n            \"muted\": false,\r\n            \"name\": \"Display Capture\",\r\n            \"private_settings\": {},\r\n            \"push-to-mute\": false,\r\n            \"push-to-mute-delay\": 0,\r\n            \"push-to-talk\": false,\r\n            \"push-to-talk-delay\": 0,\r\n            \"settings\": {\r\n                \"monitor\": 1\r\n            },\r\n            \"sync\": 0,\r\n            \"volume\": 1.0\r\n        }\r\n    ],\r\n    \"transition_duration\": 300,\r\n    \"transitions\": []\r\n}",
                 });
+                return true;
             }
+            return false;
         }
 
         private void InstallOBS(string obs)
@@ -327,13 +355,13 @@ namespace Jamcast5
             {
                 //Progress.UnsetProgress();
                 Process.Start("obs-websocket.exe", "/SILENT").WaitForExit();
-                LaunchObs(obs);
+                LaunchObs(obs, true);
             };
             Progress.SetProgress($"Installing obs-websocket plugin", 0);
             wc.DownloadFileAsync(new Uri("https://github.com/Palakis/obs-websocket/releases/download/4.3.1/obs-websocket-4.3.1-Windows-Installer.exe"), "obs-websocket.exe");
         }
 
-        private void LaunchObs(string obs)
+        private void LaunchObs(string obs, bool force)
         {
             Task.Run(async () =>
             {
@@ -345,16 +373,19 @@ namespace Jamcast5
 
                 Log("We have written OBS profiles, now launching OBS");
 
-                Process[] obses = Process.GetProcessesByName("obs64");
-                foreach (var p in obses)
+                if (force)
                 {
-                    try
+                    Process[] obses = Process.GetProcessesByName("obs64");
+                    foreach (var p in obses)
                     {
-                        p.Kill();
-                    }
-                    catch (Exception)
-                    {
-                        // Shrug~
+                        try
+                        {
+                            p.Kill();
+                        }
+                        catch (Exception)
+                        {
+                            // Shrug~
+                        }
                     }
                 }
 
