@@ -133,7 +133,6 @@ namespace Jamcast5
             LaunchObs(obs, false);
             Task.Factory.StartNew(async () =>
             {
-                Thread.CurrentThread.IsBackground = true;
                 var wc = new WebClient();
                 var tc = new TcpClient();
 
@@ -371,7 +370,7 @@ namespace Jamcast5
                 {
                     progress.UnsetProgress("Connecting to Controller...");
                     await Task.Delay(1000);
-                    if (attempts++ > 100)
+                    if (attempts++ > 300)
                         Application.Restart();
                     continue;
                 }
