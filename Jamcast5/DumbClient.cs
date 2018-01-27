@@ -23,6 +23,8 @@ namespace Jamcast5
     {
         ProgressForm progress = new ProgressForm();
         NotifyIcon trayIcon;
+        LogForm logForm;
+        string logs;
 
         private bool hasWrittenProfile = false;
 
@@ -32,17 +34,62 @@ namespace Jamcast5
             set => progress = value;
         }
 
+        private void Log(string log)
+        {
+            logs += log + Environment.NewLine;
+
+            if (logForm != null)
+            {
+                if (logForm.InvokeRequired)
+                {
+                    logForm.Invoke(new Action(() =>
+                    {
+                        logForm.logBox.Text = logs;
+                        logForm.logBox.SelectionLength = 0;
+                        logForm.logBox.SelectionStart = logForm.logBox.Text.Length;
+                        logForm.logBox.ScrollToCaret();
+                    }));
+                }
+                else
+                {
+                    logForm.logBox.Text = logs;
+                    logForm.logBox.SelectionLength = 0;
+                    logForm.logBox.SelectionStart = logForm.logBox.Text.Length;
+                    logForm.logBox.ScrollToCaret();
+                }
+            }
+        }
+
         public DumbClient()
         {
+            logs = "";
+
+            Log("Creating tray icon");
             trayIcon = new NotifyIcon()
             {
                 Icon = Resources.AppIcon,
                 ContextMenu = new ContextMenu(new MenuItem[]
                 {
+                    new MenuItem("Show Logs", ShowLogs),
                     new MenuItem("Exit", Exit)
                 }),
                 Visible = true
             };
+        }
+
+        private void ShowLogs(object sender, EventArgs e)
+        {
+            if (logForm == null)
+            {
+                logForm = new LogForm();
+            }
+
+            logForm.FormClosed += (s, ee) =>
+            {
+                logForm.Dispose();
+                logForm = null;
+            };
+            logForm.Show();
         }
 
         internal void Notify(string boop)
@@ -57,6 +104,8 @@ namespace Jamcast5
             }
         }
 
+
+
         private void Exit(object sender, EventArgs e)
         {
             trayIcon.Visible = false;
@@ -68,13 +117,17 @@ namespace Jamcast5
 
         public void Run()
         {
+            Log("Starting launch sequence");
             var obs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio");
             var ws_plugin = Path.Combine(obs, "obs-plugins", "64bit", "obs-websocket.dll");
+            Log("Checking if OBS WebSocket plugin exists at: " + ws_plugin);
             if (!File.Exists(ws_plugin))
             {
+                Log("It does not, installing or upgrading OBS");
                 InstallOBS(obs);
                 return;
             }
+            Log("It does, scheduling launch of OBS after client connect");
             LaunchObs(obs);
             Task.Factory.StartNew(async () =>
             {
@@ -85,6 +138,7 @@ namespace Jamcast5
                 JToken currentEndpoint = null;
                 DateTime lastPull = new DateTime();
 
+                Log("Looping while trying to connect to controller");
                 while (true)
                 {
                     try
@@ -94,12 +148,18 @@ namespace Jamcast5
                         {
                             var json = await wc.DownloadStringTaskAsync("https://melb18.jamhost.org/jamcast/ip");
                             endpoint = JToken.Parse(json);
+
+                        Log("Controller endpoint is now: " + endpoint);
                         }
 
                         if (tc.Connected)
                         {
+                            Log("TCP connection to controller is established");
+                            
                             if (!endpoint.Equals(currentEndpoint))
                             {
+                                Log("Endpoint has changed, disconnecting");
+
                                 // Endpoint changed, reconnect.
                                 tc.Client.Disconnect(true);
                                 tc = new TcpClient();
@@ -107,19 +167,29 @@ namespace Jamcast5
                             }
                             else if (tc.Client.Poll(0, SelectMode.SelectRead))
                             {
+                                Log("Checking if we're still live on the TCP connection");
+
                                 byte[] buff = new byte[1];
                                 try
                                 {
                                     if (tc.Client.Receive(buff, SocketFlags.Peek) == 0)
                                     {
+                                        Log("We are not, disconnecting");
+
                                         // We have actively lost connection to the server, attempt reconnect.
                                         tc.Client.Disconnect(true);
                                         tc = new TcpClient();
                                         continue;
                                     }
+                                    else
+                                    {
+                                        Log("I'm doing science and I'm still alive");
+                                    }
                                 }
                                 catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
                                 {
+                                    Log("We are not, disconnecting");
+                                    
                                     // We have actively lost connection to the server, attempt reconnect.
                                     tc.Client.Disconnect(true);
                                     tc = new TcpClient();
@@ -131,8 +201,11 @@ namespace Jamcast5
                         }
                         else if (endpoint.Type != JTokenType.Null)
                         {
+                            Log("TCP connection is not established, but there is an endpoint");
+
                             try
                             {
+                                Log("Establishing connection...");
                                 IPEndPoint remoteEP = ParseIPEndPoint(endpoint.Value<string>());
 
                                 tc.Dispose();
@@ -152,9 +225,12 @@ namespace Jamcast5
                                 WriteProfile(remoteEP);
                                 hasWrittenProfile = true;
                                 LaunchObs(obs);
+                                Log("Connection established");
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
+                                Log(ex.ToString());
+
                                 // Shrug!
                                 await Task.Delay(5000);
                             }
@@ -163,7 +239,7 @@ namespace Jamcast5
                     }
                     catch (Exception ex)
                     {
-
+                        Log(ex.ToString());
                     }
                 }
             });
@@ -171,6 +247,7 @@ namespace Jamcast5
 
         private void WriteProfile(IPEndPoint remoteEP)
         {
+            Log("Writing OBS profiles for " + remoteEP.ToString());
             var ip = remoteEP.Address.ToString();
             WriteProfile("Primary", ip, 1234);
             WriteProfile("Secondary", ip, 1235);
@@ -265,6 +342,8 @@ namespace Jamcast5
                     await Task.Delay(1000);
                     continue;
                 }
+
+                Log("We have written OBS profiles, now launching OBS");
 
                 Process[] obses = Process.GetProcessesByName("obs64");
                 foreach (var p in obses)
