@@ -32,8 +32,15 @@ namespace Jamcast5
                 this.Show();
         }
 
-        internal void UnsetProgress()
+        internal void UnsetProgress(string text)
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<string>(UnsetProgress), text);
+                return;
+            }
+            if (!string.IsNullOrEmpty(text))
+                label1.Text = text;
             progressBar1.Style = ProgressBarStyle.Marquee;
         }
     }

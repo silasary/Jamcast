@@ -9,6 +9,8 @@ namespace Jamcast5
 {
     static class Program
     {
+        private static DumbClient client;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -48,7 +50,7 @@ namespace Jamcast5
                         Application.EnableVisualStyles();
                         Application.SetCompatibleTextRenderingDefault(false);
                         Task.Run(CheckForUpdates);
-                        var client = new DumbClient();
+                        client = new DumbClient();
                         client.Run();
                         Application.Run(client);
                     }
@@ -103,11 +105,13 @@ namespace Jamcast5
                     {
                         try
                         {
+                            client.Notify("Jamcast is updating");
                             ad.Update();
                             Application.Restart();
                         }
                         catch
                         {
+                            client.Notify("Jamcast failed to update.");
                             // Can't auto-update.
                         }
                     }
