@@ -139,6 +139,7 @@ namespace Jamcast5
                                 tc.EndConnect(result);
                                 WriteProfile(remoteEP);
                                 hasWrittenProfile = true;
+                                LaunchObs(obs);
                             }
                             catch (Exception)
                             {
@@ -266,19 +267,22 @@ namespace Jamcast5
                     }
                 }
 
-                if (Process.GetProcessesByName("obs64").Length == 0)
+                lock (obs)
                 {
-                    Progress.SetProgress("Launching OBS", 0);
-                    //Progress.UnsetProgress();
-                    AcceptLicence();
-                    Thread.Sleep(TimeSpan.FromSeconds(1));
-                    string sixtyfour = Path.Combine(obs, "bin", "64bit");
-                    string obs_exe = Path.Combine(sixtyfour, "obs64.exe");
-                    Process.Start(new ProcessStartInfo(obs_exe)
+                    if (Process.GetProcessesByName("obs64").Length == 0)
                     {
-                        WorkingDirectory = sixtyfour,
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    });
+                        Progress.SetProgress("Launching OBS", 0);
+                        //Progress.UnsetProgress();
+                        AcceptLicence();
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
+                        string sixtyfour = Path.Combine(obs, "bin", "64bit");
+                        string obs_exe = Path.Combine(sixtyfour, "obs64.exe");
+                        Process.Start(new ProcessStartInfo(obs_exe)
+                        {
+                            WorkingDirectory = sixtyfour,
+                            WindowStyle = ProcessWindowStyle.Hidden
+                        });
+                    }
                 }
                 Progress.Close();
                 Progress = null;
