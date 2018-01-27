@@ -253,6 +253,19 @@ namespace Jamcast5
                     continue;
                 }
 
+                Process[] obses = Process.GetProcessesByName("obs64");
+                foreach (var p in obses)
+                {
+                    try
+                    {
+                        p.Kill();
+                    }
+                    catch (Exception)
+                    {
+                        // Shrug~
+                    }
+                }
+
                 if (Process.GetProcessesByName("obs64").Length == 0)
                 {
                     Progress.SetProgress("Launching OBS", 0);
