@@ -164,6 +164,8 @@ namespace Controller
                     _currentInput = _standbyInput;
                     _standbyInput = a;
 
+                    System.IO.File.WriteAllLines("CurrentEndpoint.txt", new[] { _currentInput?.ToString() ?? "No-one!" });
+
                     UpdateStatus();
 
                     _currentInputIsPrimary = false;
@@ -191,6 +193,8 @@ namespace Controller
                     a = _currentInput;
                     _currentInput = _standbyInput;
                     _standbyInput = a;
+
+                    System.IO.File.WriteAllLines("CurrentEndpoint.txt", new[] { _currentInput?.ToString() ?? "No-one!" });
 
                     UpdateStatus();
 
