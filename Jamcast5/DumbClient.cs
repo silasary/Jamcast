@@ -368,10 +368,17 @@ namespace Jamcast5
                 int attempts = 0;
                 while (!hasWrittenProfile)
                 {
-                    progress.UnsetProgress("Connecting to Controller...");
-                    await Task.Delay(1000);
                     if (attempts++ > 300)
-                        Application.Restart();
+                    {
+                        var txt = TimeSpan.FromSeconds(attempts).ToString();
+                        progress.UnsetProgress($"Connecting to Controller...\nYou have been waiting for {txt}.  Try relaunching Jamcast, or contacting support.");
+                    }
+                    else
+                    {
+                        progress.UnsetProgress("Connecting to Controller...");
+                    }
+
+                    await Task.Delay(1000);
                     continue;
                 }
 

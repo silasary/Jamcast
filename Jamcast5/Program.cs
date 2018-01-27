@@ -118,7 +118,6 @@ namespace Jamcast5
                         {
                             client.Notify("Jamcast is updating");
                             ad.Update();
-                            Application.Restart();
                         }
                         catch
                         {
