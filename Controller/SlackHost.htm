@@ -1,0 +1,52 @@
+﻿
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="emoji.css">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+</head>
+<body>
+    <style type="text/css">
+        .channel {
+            color: cyan;
+        }
+
+        .user, a {
+            color: cyan;
+        }
+
+        .author {
+            color: orange;
+        }
+
+        p {
+            display: inline;
+            margin: 0;
+            padding: 0;
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        body, html {
+            color: white;
+        }
+    </style>
+    <div id="body"></div>
+    <script type="text/javascript">
+        $(function() {
+            function doLoad() {
+                $.get('/SlackChat.htm', function (data) {
+                    $("#body").html(data);
+                }).always(function() {
+                    window.setTimeout(doLoad, 1000);
+                });
+            }
+            doLoad();
+        });
+    </script>
+</body>
+</html>

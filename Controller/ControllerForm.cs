@@ -1,10 +1,18 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using HeyRed.MarkdownSharp;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OBSWebsocketDotNet;
+using SlackAPI;
+using SlackAPI.WebSocketMessages;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -28,6 +36,10 @@ namespace Controller
         private Random _random;
         private readonly UdpForwarder _primaryForwarder;
         private readonly UdpForwarder _secondaryForwarder;
+        private Dictionary<string, string> _slackUserCache;
+        private SlackSocketClient _slackClient;
+        private Dictionary<string, string> _slackEmojis;
+        private readonly object _messagesLock = new object();
 
         public ControllerForm()
         {
@@ -65,6 +77,56 @@ namespace Controller
             _controllerObs.Connect("ws://localhost:4444", null);
 
             _controllerTask = StartThread("OBS Controller", ControllerTask);
+
+            StartThread("HTTP Host", HostHttpServerForChat);
+
+            StartThread("Slack Thread", PullSlackMessagesAndOutputToFile);
+        }
+
+        private void HostHttpServerForChat()
+        {
+            var listener = new HttpListener();
+            listener.Prefixes.Add("http://+:9091/");
+            listener.Start();
+
+            while (true)
+            {
+                try
+                {
+                    var context = listener.GetContext();
+                    var request = context.Request;
+                    var response = context.Response;
+
+                    string responseString = "";
+                    if (request.Url.LocalPath == "/" || request.Url.LocalPath == "")
+                    {
+                        responseString = System.IO.File.ReadAllText("SlackHost.htm");
+                    }
+                    else if (System.IO.File.Exists(request.Url.LocalPath.TrimStart('/')))
+                    {
+                        var buffer = System.IO.File.ReadAllBytes(request.Url.LocalPath.TrimStart('/'));
+                        response.ContentLength64 = buffer.Length;
+                        System.IO.Stream output = response.OutputStream;
+                        output.Write(buffer, 0, buffer.Length);
+                        output.Close();
+                        continue;
+                    }
+
+                    {
+                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                        // Get a response stream and write the response to it.
+                        response.ContentLength64 = buffer.Length;
+                        System.IO.Stream output = response.OutputStream;
+                        output.Write(buffer, 0, buffer.Length);
+                        // You must close the output stream.
+                        output.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log(null, "HTTP Host: " + ex);
+                }
+            }
         }
 
         private Thread StartThread(string name, Action action)
@@ -145,6 +207,165 @@ namespace Controller
                     Log(null, ex.ToString());
                 }
             }
+        }
+
+        [RequestPath("emoji.list")]
+        public class EmojiListResponse : Response
+        {
+            public Dictionary<string, string> emoji;
+        }
+
+        [RequestPath("files.sharedPublicURL")]
+        public class FilesSharedPublicURLResponse : Response
+        {
+            public SlackAPI.File file;
+        }
+
+        private void PullSlackMessagesAndOutputToFile()
+        {
+            var messages = new List<JObject>();
+            if (System.IO.File.Exists("SlackChat.json"))
+            {
+                messages = JsonConvert.DeserializeObject<List<JObject>>(System.IO.File.ReadAllText("SlackChat.json"));
+                if (messages == null)
+                {
+                    messages = new List<JObject>();
+                }
+            }
+
+            // _slackClient = new SlackSocketClient("TODO");
+            _slackClient.Connect((connected) => {
+                // This is called once the client has emitted the RTM start command
+                _slackClient.APIRequestWithToken<EmojiListResponse>((resp) =>
+                {
+                    _slackEmojis = resp.emoji;
+
+                    lock (_messagesLock)
+                    {
+                        System.IO.File.WriteAllText("SlackChat.htm", GenerateHtmlMessages(messages));
+                    }
+                });
+            }, () => {
+                // This is called once the RTM client has connected to the end point
+            });
+            _slackClient.OnMessageReceived += (messageObj) =>
+            {
+                var messageRaw = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(messageObj));
+
+                var message = JsonConvert.DeserializeObject<NewMessage>(JsonConvert.SerializeObject(messageRaw));
+                var fileShareMessage = JsonConvert.DeserializeObject<FileShareMessage>(JsonConvert.SerializeObject(messageRaw));
+
+                if (message.channel == "C8Z1B1YKW")
+                {
+                    Action complete = () =>
+                    {
+                        lock (_messagesLock)
+                        {
+                            messages.Add(messageRaw);
+
+                            System.IO.File.WriteAllText("SlackChat.json", JsonConvert.SerializeObject(messages));
+                            System.IO.File.WriteAllText("SlackChat.htm", GenerateHtmlMessages(messages));
+                        }
+                    };
+
+                    if (message.subtype == "file_share")
+                    {
+                        if (fileShareMessage.file.mimetype.Contains("image"))
+                        {
+                            _slackClient.APIRequestWithToken<FilesSharedPublicURLResponse>((resp) =>
+                            {
+                                Task.Run(async () =>
+                                {
+                                    // Wait for Slack to make the file public.
+                                    await Task.Delay(1500);
+                                    fileShareMessage.file = resp.file;
+                                    complete();
+                                });
+                            }, new Tuple<string, string>("file", fileShareMessage.file.id));
+                        }
+                        else
+                        {
+                            complete();
+                        }
+                    }
+                    else
+                    {
+                        complete();
+                    }
+
+                }
+            };
+        }
+
+        private string GenerateHtmlMessages(List<JObject> messages)
+        {
+            messages = ((IEnumerable<JObject>)messages).Reverse().ToList();
+
+            var channelRegex = new Regex("\\<\\#.+?\\|(.+?)\\>");
+            var userRegex = new Regex("\\<\\@(.+?)\\>");
+            var emojiRegex = new Regex("\\:([a-z_0-9-]+?)\\:");
+
+            var markdown = new Markdown();
+
+            var chat = "";
+            foreach (var messageRaw in messages.Take(40))
+            {
+                var message = JsonConvert.DeserializeObject<NewMessage>(JsonConvert.SerializeObject(messageRaw));
+                var fileShareMessage = JsonConvert.DeserializeObject<FileShareMessage>(JsonConvert.SerializeObject(messageRaw));
+                if (message.subtype == "file_share" &&
+                    fileShareMessage != null &&
+                    fileShareMessage.file.mimetype.Contains("image"))
+                {
+                    var publicUri = new Uri(fileShareMessage.file.permalink_public);
+                    var publicUriPath = publicUri.LocalPath.TrimStart('/').Split('-');
+                    var publicSecret = publicUriPath.Last();
+                    var privateComponents = publicUriPath.Take(publicUriPath.Length - 1);
+                    var realPublicUri = $"https://files.slack.com/files-pri/{string.Join("-", privateComponents)}/{fileShareMessage.file.name}?pub_secret={publicSecret}";
+
+                    chat += "<span class=\"author\">@" + _slackClient.UserLookup[message.user].name + ":</span> <img class=\"img\" src=\"" + realPublicUri + "\" />";
+                }
+                else
+                {
+                    var newMessage = message.text;
+                    newMessage = channelRegex.Replace(newMessage, (match) => "<span class=\"channel\">#" + match.Groups[1].Value + "</span>");
+                    newMessage = userRegex.Replace(newMessage, (match) => "<span class=\"user\">@" + _slackClient.UserLookup[match.Groups[1].Value].name + "</span>");
+                    newMessage = emojiRegex.Replace(newMessage, (match) =>
+                    {
+                        var emoji_name = match.Groups[1].Value;
+
+                        if (_slackEmojis != null)
+                        {
+                            if (_slackEmojis.ContainsKey(emoji_name))
+                            {
+                                var customEmoji = _slackEmojis[emoji_name];
+                                if (customEmoji.StartsWith("alias:"))
+                                {
+                                    emoji_name = customEmoji.Substring("alias:".Length);
+                                }
+                                else
+                                {
+                                    return $"<span class=\"emoji-outer emoji-sizer\"><span class=\"emoji-inner\" style=\"background: url(" + customEmoji + "); background-size: contain;\"></span></span>";
+                                }
+                            }
+                        }
+
+                        if (EmojiSharp.Emoji.All.ContainsKey(emoji_name))
+                        {
+                            var unicode = EmojiSharp.Emoji.All[emoji_name].Unified.Replace("-", "").ToLowerInvariant();
+                            return $"<span class=\"emoji-outer emoji-sizer\"><span class=\"emoji-inner emoji{unicode}\"></span></span>";
+                        }
+                        else
+                        {
+                            return ":" + emoji_name + ":";
+                        }
+                    });
+
+                    var formattedMessage = markdown.Transform(newMessage);
+
+                    chat += "<span class=\"author\">@" + _slackClient.UserLookup[message.user].name + ":</span> " + formattedMessage + "<br />";
+                }
+            }
+            return chat;
         }
 
         // This task goes through the client and configures their scenes, profiles, etc.
@@ -397,6 +618,15 @@ namespace Controller
             {
                 Invoke(new Action(() => { UpdateStatus(); }));
                 return;
+            }
+
+            try
+            {
+                System.IO.File.WriteAllText("Connections.txt", _remoteEndpoints.Count + " people connected");
+            }
+            catch
+            {
+
             }
 
             var status = "";

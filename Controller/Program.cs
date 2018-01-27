@@ -17,7 +17,7 @@ namespace Controller
         {
             ThreadPool.SetMaxThreads(32, 32);
             ThreadPool.SetMinThreads(32, 32);
-
+            
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new ControllerForm());
