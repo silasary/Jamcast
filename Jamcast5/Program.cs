@@ -27,6 +27,12 @@ namespace Jamcast5
             }
             // Wait for process to close
             Thread.Sleep(2000);
+            //RunMutex();
+            Run();
+        }
+
+        private static void RunMutex()
+        {
             Mutex mutex = new System.Threading.Mutex(false, "JamCastMutex");
             try
             {
@@ -47,12 +53,7 @@ namespace Jamcast5
                     {
                         // Run the application
                         tryAgain = false;
-                        Application.EnableVisualStyles();
-                        Application.SetCompatibleTextRenderingDefault(false);
-                        Task.Run(CheckForUpdates);
-                        client = new DumbClient();
-                        client.Run();
-                        Application.Run(client);
+                        Run();
                     }
                     else
                     {
@@ -77,6 +78,16 @@ namespace Jamcast5
                     mutex = null;
                 }
             }
+        }
+
+        private static void Run()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Task.Run(CheckForUpdates);
+            client = new DumbClient();
+            client.Run();
+            Application.Run(client);
         }
 
         private static async Task CheckForUpdates()
@@ -107,7 +118,6 @@ namespace Jamcast5
                         {
                             client.Notify("Jamcast is updating");
                             ad.Update();
-                            Application.Restart();
                         }
                         catch
                         {
