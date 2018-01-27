@@ -270,7 +270,7 @@ namespace Jamcast5
             var dirty = false;
             dirty = WriteProfile("Primary", ip, 1234) || dirty;
             dirty = WriteProfile("Secondary", ip, 1235) || dirty;
-            dirty = WriteScene("Jamcast") || dirty;
+            dirty = WriteScene("Untitled") || dirty;
             return dirty;
         }
 
@@ -309,7 +309,7 @@ namespace Jamcast5
                     "FFAudioTrack=1",
                 };
             string path = Path.Combine(profiledir, dname, "basic.ini");
-            if (!string.Join("|", File.ReadAllLines(path)).Equals(string.Join("|", contents)))
+            if (!File.Exists(path) || !string.Join("|", File.ReadAllLines(path)).Equals(string.Join("|", contents)))
             {
                 File.WriteAllLines(path, contents);
                 return true;
@@ -320,6 +320,7 @@ namespace Jamcast5
         private static bool WriteScene(string name)
         {
             var scenedir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "obs-studio", "basic", "scenes");
+            Directory.CreateDirectory(Path.Combine(scenedir));
             var sceneJson = Path.Combine(scenedir, name + ".json");
             if (!File.Exists(sceneJson))
             {
@@ -365,9 +366,13 @@ namespace Jamcast5
         {
             Task.Run(async () =>
             {
+                int attempts = 0;
                 while (!hasWrittenProfile)
                 {
+                    progress.UnsetProgress("Connecting to Controller...");
                     await Task.Delay(1000);
+                    if (attempts++ > 100)
+                        Application.Restart();
                     continue;
                 }
 
