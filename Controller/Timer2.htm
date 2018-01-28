@@ -1,26 +1,39 @@
 <html>
     <head><meta charset="utf-8"/><link href="https://fonts.googleapis.com/css?family=Anonymous+Pro" rel="stylesheet"> </head>
-    <body>
+    <body id="body">
         <style>
             html, body {
                 color: white;
-                font-family: 'Anonymous Pro', monospace;
+                font-family: 'Comic Sans MS';
                 margin: 0px;
                 padding: 0;
-                text-align: right;
+                text-align: center;
+                font-weight: bold;
             }
-            h2{
+            h2, h3 {
                 margin: 0;
                 padding: 0;
-                font-size: 250%;
+                font-size: 1000%;
+                text-shadow: 
+                    0px 0px 15px #000000,
+                    -7.5px 0px 15px #000000,
+                    7.5px 0px 15px #000000,
+                    0px -7.5px 15px #000000,
+                    0px 7.5px 15px #000000
+                    ;
+            }
+            h3 {
+                font-size: 800%;
             }
         </style>
         <script type="text/javascript" src="./moment-with-locales.min.js"></script>
         <script type="text/javascript" src="./moment-timezone-with-data.min.js"></script>
         <h2 id="timer">Test</h2>
+        <h3>GET UPLOADING - https://globalgamejam.org</h3>
         <script>
             console.log(new Date());
             var timerElem = document.getElementById("timer");
+            var body = document.getElementById("body");
             var endDate = moment.tz("2018-01-28 15:00", "Australia/Melbourne");
             window.setInterval(function() {
                 var currentDate = moment.tz('Australia/Melbourne');
@@ -35,22 +48,50 @@
                         hrsuf = '';
                     }
                     timerElem.innerText = 
-                        Math.floor(duration.asHours()).toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ' +
+                        //Math.floor(duration.asHours()).toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ' +
                         duration.minutes().toFixed(0).padStart(2, '0') + ' min ' +
                         duration.seconds().toFixed(0).padStart(2, '0') + ' sec ' +
                         duration.milliseconds().toFixed(0).padStart(3, '0') + ' ms';
-                    timerElem.style.color = 'white';
+                        body.style.color = 'white';
                     if (hours < 1) {
-                        if (duration.milliseconds() % 500 < 250) {
-                            timerElem.style.color = 'red';
-                        } else {
-                            timerElem.style.color = 'white';
+                        var l = Math.floor(duration.milliseconds() / 100);
+                        switch (l) {
+                            case 0:
+                            body.style.color = 'red';
+                                break;  
+                            case 1:
+                            body.style.color = 'orange';
+                                break;
+                            case 2:
+                            body.style.color = 'yellow';
+                                break;
+                            case 3:
+                            body.style.color = 'green';
+                                break;
+                            case 4:
+                            body.style.color = 'cyan';
+                                break;
+                            case 5:
+                            body.style.color = '#FF6666';
+                                break;
+                            case 6:
+                            body.style.color = 'purple';
+                                break;
+                            case 7:
+                            body.style.color = 'pink';
+                                break;
+                            case 8:
+                            body.style.color = 'white';
+                                break;
+                            case 9:
+                            body.style.color = 'gray';
+                                break;
                         }
                     } else if (hours < 3) {
                         if (duration.milliseconds() % 1000 < 500) {
-                            timerElem.style.color = 'orange';
+                            body.style.color = 'orange';
                         } else {
-                            timerElem.style.color = 'white';
+                            body.style.color = 'white';
                         }
                     }
                 }

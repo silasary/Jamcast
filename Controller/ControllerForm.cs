@@ -580,7 +580,7 @@ namespace Controller
 
             int nextIdx = 0;
             //return _random.Next(0, endpoints.Count - 1);
-            var never = LastBroadcastTime.Where(kv => !clone.Contains(kv.Key)).Select(kv => kv.Value).ToList();
+            var never = clone.Where(k => !LastBroadcastTime.ContainsKey(k)).ToList();
             if (never.Any())
             {
                 nextIdx = _random.Next(0, never.Count - 1);
