@@ -40,6 +40,7 @@ namespace Controller
         private SlackSocketClient _slackClient;
         private Dictionary<string, string> _slackEmojis;
         private readonly object _messagesLock = new object();
+        private readonly List<string> _excludedIpAddressUserInput = new List<string>();
 
         public ControllerForm()
         {
@@ -56,6 +57,12 @@ namespace Controller
             {
                 Log(null, "Secondary forwarder: " + ex);
             };
+
+            if (System.IO.File.Exists("ExcludeList.txt"))
+            {
+                excludeBox.Text = System.IO.File.ReadAllText("ExcludeList.txt");
+                excludeBox_TextChanged(this, EventArgs.Empty);
+            }
 
             _random = new Random();
 
@@ -480,6 +487,14 @@ namespace Controller
                     var nextInput = endpoints[nextIdx];
 
                     Log(null, "Selected " + nextInput + " as next standby");
+                    
+                    var ipClient = nextInput as IPEndPoint;
+                    if (ipClient != null && _excludedIpAddressUserInput.Contains(ipClient.Address.ToString()))
+                    {
+                        Log(null, "Need to pick another websocket (this one is excluded)...");
+                        Thread.Sleep(1000);
+                        continue;
+                    }
 
                     // Tell the next endpoint to start streaming into the right slot.
                     var websocket = _websockets[nextInput];
@@ -493,22 +508,40 @@ namespace Controller
                     {
                         Log(null, "Setting profile to Secondary");
                         websocket.SetCurrentProfile("Jamcast-Secondary");
+                        if (websocket.GetCurrentProfile() != "Jamcast-Secondary")
+                        {
+                            // OBS in a state that we can't switch profiles don't use.
+                            Log(null, "Need to pick another websocket (this one isn't ready)...");
+                            Thread.Sleep(1000);
+                            continue;
+                        }
                     }
                     else
                     {
                         Log(null, "Setting profile to Primary");
                         websocket.SetCurrentProfile("Jamcast-Primary");
+                        if (websocket.GetCurrentProfile() != "Jamcast-Primary")
+                        {
+                            // OBS in a state that we can't switch profiles don't use.
+                            Log(null, "Need to pick another websocket (this one isn't ready)...");
+                            Thread.Sleep(1000);
+                            continue;
+                        }
                     }
-                    _standbyInput = nextInput;
                     try
                     {
-                        Log(null, "Telling client at " + _standbyInput + " start streaming");
+                        Log(null, "Telling client at " + nextInput + " start streaming");
                         websocket.StartRecording();
                     }
                     catch (Exception ex)
                     {
-                        Log(null, _standbyInput + " during recording start: " + ex.ToString());
+                        Log(null, nextInput + " during recording start: " + ex.ToString());
+                        Log(null, "Need to pick another websocket (this one isn't ready)...");
+                        Thread.Sleep(1000);
+                        continue;
                     }
+
+                    _standbyInput = nextInput;
                     _needsPrepIntoStandby = false;
 
                     if (_currentInputIsPrimary)
@@ -637,6 +670,11 @@ namespace Controller
             foreach (var client in _remoteEndpoints)
             {
                 var suffix = "";
+                var ipClient = client as IPEndPoint;
+                if (ipClient != null && _excludedIpAddressUserInput.Contains(ipClient.Address.ToString()))
+                {
+                    suffix += " (Excluded)";
+                }
                 if (client.Equals(_currentInput))
                 {
                     suffix += " (Active)";
@@ -825,6 +863,14 @@ namespace Controller
                     UpdateStatus();
                 }
             });
+        }
+
+        private void excludeBox_TextChanged(object sender, EventArgs e)
+        {
+            _excludedIpAddressUserInput.Clear();
+            _excludedIpAddressUserInput.AddRange(excludeBox.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries));
+
+            System.IO.File.WriteAllText("ExcludeList.txt", excludeBox.Text);
         }
     }
 }
