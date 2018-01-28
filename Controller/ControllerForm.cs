@@ -42,6 +42,8 @@ namespace Controller
         private readonly object _messagesLock = new object();
         private readonly List<string> _excludedIpAddressUserInput = new List<string>();
 
+        private readonly Dictionary<EndPoint, DateTime> LastBroadcastTime = new Dictionary<EndPoint, DateTime>();
+
         public ControllerForm()
         {
             InitializeComponent();
@@ -482,12 +484,10 @@ namespace Controller
 
                         _standbyInput = null;
                     }
-
-                    var nextIdx = _random.Next(0, endpoints.Count - 1);
-                    var nextInput = endpoints[nextIdx];
+                    EndPoint nextInput = ChooseNextEndpoint(endpoints);
 
                     Log(null, "Selected " + nextInput + " as next standby");
-                    
+
                     var ipClient = nextInput as IPEndPoint;
                     if (ipClient != null && _excludedIpAddressUserInput.Contains(ipClient.Address.ToString()))
                     {
@@ -573,7 +573,32 @@ namespace Controller
                 }
             }
         }
-        
+
+        private EndPoint ChooseNextEndpoint(List<EndPoint> endpoints)
+        {
+            var clone = endpoints.ToList();
+
+            int nextIdx = 0;
+            //return _random.Next(0, endpoints.Count - 1);
+            var never = LastBroadcastTime.Where(kv => !clone.Contains(kv.Key)).Select(kv => kv.Value).ToList();
+            if (never.Any())
+            {
+                nextIdx = _random.Next(0, never.Count - 1);
+            }
+            else
+            {
+                clone = clone.OrderBy(k => LastBroadcastTime[k]).ToList();
+                if (clone.Count > 1)
+                    nextIdx = _random.Next(0, 1);
+                else
+                    nextIdx = 0;
+            }
+
+            var nextInput = clone[nextIdx];
+            LastBroadcastTime[nextInput] = DateTime.Now;
+            return nextInput;
+        }
+
         private void RegisterWebsocketEvents(OBSWebsocket websocket)
         {
             websocket.Connected += (sender, args) => Log(websocket, "Connected");
