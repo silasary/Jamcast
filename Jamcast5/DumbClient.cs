@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -119,8 +120,9 @@ namespace Jamcast5
 
         public void Run()
         {
+            AuthForm.Authenticate().GetAwaiter().GetResult();
             Log("Starting launch sequence");
-            var obs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio");
+            var obs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "jc-obs-studio");
             var ws_plugin = Path.Combine(obs, "obs-plugins", "64bit", "obs-websocket.dll");
             Log("Checking if OBS WebSocket plugin exists at: " + ws_plugin);
             if (!File.Exists(ws_plugin))
@@ -133,7 +135,6 @@ namespace Jamcast5
             LaunchObs(obs, false);
             Task.Factory.StartNew(async () =>
             {
-                var wc = new WebClient();
                 var tc = new TcpClient();
 
                 JToken currentEndpoint = null;
@@ -147,8 +148,7 @@ namespace Jamcast5
                         JToken endpoint = currentEndpoint;
                         if (DateTime.Now.Subtract(lastPull).TotalMinutes > 5)
                         {
-                            var json = await wc.DownloadStringTaskAsync("https://melb18.jamhost.org/jamcast/ip");
-                            endpoint = JToken.Parse(json);
+                            endpoint = await API.GetJamcastEndpoint(endpoint);
 
                             Log("Controller endpoint is now: " + endpoint);
                         }
@@ -341,10 +341,11 @@ namespace Jamcast5
             wc.DownloadFileCompleted += (s, e) =>
             {
                 //Progress.UnsetProgress();
-                Process.Start("obs.exe", "/S").WaitForExit();
+                ZipFile.ExtractToDirectory("obs.zip", obs);
+                //Process.Start("obs.exe", "/S").WaitForExit();
                 InstallOBSWS(obs);
             };
-            wc.DownloadFileAsync(new Uri("https://github.com/jp9000/obs-studio/releases/download/21.0.1/OBS-Studio-21.0.1-Full-Installer.exe"), "obs.exe");
+            wc.DownloadFileAsync(new Uri("https://github.com/obsproject/obs-studio/releases/download/22.0.2/OBS-Studio-22.0.2-Full-x64.zip"), "obs.zip");
         }
 
         private void InstallOBSWS(string obs)
@@ -354,11 +355,12 @@ namespace Jamcast5
             wc.DownloadFileCompleted += (s, e) =>
             {
                 //Progress.UnsetProgress();
-                Process.Start("obs-websocket.exe", "/SILENT").WaitForExit();
+                //Process.Start("obs-websocket.exe", "/SILENT").WaitForExit();
+                ZipFile.ExtractToDirectory("obs-websocket.zip", obs);
                 LaunchObs(obs, true);
             };
             Progress.SetProgress($"Installing obs-websocket plugin", 0);
-            wc.DownloadFileAsync(new Uri("https://github.com/Palakis/obs-websocket/releases/download/4.3.1/obs-websocket-4.3.1-Windows-Installer.exe"), "obs-websocket.exe");
+            wc.DownloadFileAsync(new Uri("https://github.com/Palakis/obs-websocket/releases/download/4.5.0/obs-websocket-4.5.0-Windows.zip"), "obs-websocket.zip");
         }
 
         private void LaunchObs(string obs, bool force)
