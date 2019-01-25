@@ -535,6 +535,10 @@ namespace Controller
                     }
                     catch (Exception ex)
                     {
+                        if (ex.Message.StartsWith("recording already active"))
+                        {
+                            websocket.StopRecording();
+                        }
                         Log(null, nextInput + " during recording start: " + ex.ToString());
                         Log(null, "Need to pick another websocket (this one isn't ready)...");
                         Thread.Sleep(1000);
