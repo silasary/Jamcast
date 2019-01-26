@@ -13,7 +13,28 @@ namespace Jamcast5
 {
     public static class API
     {
-        public class AuthInfo
+        private static string SessionJson
+        {
+            get
+            {
+                if (File.Exists("session.json"))
+                    return "session.json";
+                Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "jamcast"));
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "jamcast", "session.json");
+            }
+        }
+        private static string SiteInfoJson
+        {
+            get
+            {
+                if (File.Exists("siteinfo.json"))
+                    return "siteinfo.json";
+                Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "jamcast"));
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "jamcast", "siteinfo.json");
+            }
+        }
+
+public class AuthInfo
         {
             public string FullName { get; set; }
 
@@ -89,7 +110,7 @@ namespace Jamcast5
                         SecretKey = (string)resultParsed.result.secretKey,
                         AccountType = (string)resultParsed.result.accountType,
                     };
-                    File.WriteAllText("session.json", JsonConvert.SerializeObject(Credentials));
+                    File.WriteAllText(SessionJson, JsonConvert.SerializeObject(Credentials));
 
                 }
                 return Credentials.IsValid;
@@ -103,7 +124,7 @@ namespace Jamcast5
             {
                 var result = await client.DownloadStringTaskAsync(url);
                 var resultParsed = JsonConvert.DeserializeObject<SiteInfo>(result);
-                File.WriteAllText("siteinfo.json", JsonConvert.SerializeObject(resultParsed));
+                File.WriteAllText(SiteInfoJson, JsonConvert.SerializeObject(resultParsed));
                 return resultParsed;
             }
         }
@@ -111,10 +132,10 @@ namespace Jamcast5
         public static async Task<bool> ValidateSession()
         {
             const string url = "/jamcast/api/validatesession";
-            if (File.Exists("session.json"))
+            if (File.Exists(SessionJson))
             {
-                var credentials = JsonConvert.DeserializeObject<API.AuthInfo>(File.ReadAllText("session.json"));
-                var siteinfo = JsonConvert.DeserializeObject<API.SiteInfo>(File.ReadAllText("siteinfo.json"));
+                var credentials = JsonConvert.DeserializeObject<API.AuthInfo>(File.ReadAllText(SessionJson));
+                var siteinfo = JsonConvert.DeserializeObject<API.SiteInfo>(File.ReadAllText(SiteInfoJson));
                 BaseAddress = siteinfo.Url;
                 // Validation is a good idea.
                 Credentials = credentials;

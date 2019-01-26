@@ -296,7 +296,7 @@ namespace Jamcast5
                     "RecType=FFmpeg",
                     "RecTracks=1",
                     "FFOutputToFile=false",
-                    $"FFURL=udp://{ip}:{port}",
+                    $"FFURL=udp://{ip}:{port}?pkt_size=1316",
                     "FFFormat=mpegts",
                     "FFFormatMimeType=video/MP2T",
                     "FFExtension=ts",
