@@ -1,6 +1,7 @@
 ﻿using HeyRed.MarkdownSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Nowin;
 using OBSWebsocketDotNet;
 using SlackAPI;
 using SlackAPI.WebSocketMessages;
@@ -16,6 +17,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Owin.Builder;
+using Owin;
 
 namespace Controller
 {
@@ -94,48 +97,23 @@ namespace Controller
 
         private void HostHttpServerForChat()
         {
-            var listener = new HttpListener();
-            listener.Prefixes.Add("http://+:9091/");
-            listener.Start();
-
-            while (true)
+            var app = new AppBuilder();
+            app.Use(async (context, next) =>
             {
-                try
+                if (context.Request.Path.Value == "/")
                 {
-                    var context = listener.GetContext();
-                    var request = context.Request;
-                    var response = context.Response;
-
-                    string responseString = "";
-                    if (request.Url.LocalPath == "/" || request.Url.LocalPath == "")
-                    {
-                        responseString = System.IO.File.ReadAllText("SlackHost.htm");
-                    }
-                    else if (System.IO.File.Exists(request.Url.LocalPath.TrimStart('/')))
-                    {
-                        var buffer = System.IO.File.ReadAllBytes(request.Url.LocalPath.TrimStart('/'));
-                        response.ContentLength64 = buffer.Length;
-                        System.IO.Stream output = response.OutputStream;
-                        output.Write(buffer, 0, buffer.Length);
-                        output.Close();
-                        continue;
-                    }
-
-                    {
-                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-                        // Get a response stream and write the response to it.
-                        response.ContentLength64 = buffer.Length;
-                        System.IO.Stream output = response.OutputStream;
-                        output.Write(buffer, 0, buffer.Length);
-                        // You must close the output stream.
-                        output.Close();
-                    }
+                    await context.Response.WriteAsync(System.IO.File.ReadAllText("SlackHost.htm"));
                 }
-                catch (Exception ex)
+                else if (System.IO.File.Exists(context.Request.Path.Value.TrimStart('/')))
                 {
-                    Log(null, "HTTP Host: " + ex);
+                    var buffer = System.IO.File.ReadAllBytes(context.Request.Path.Value.TrimStart('/'));
+                    await context.Response.WriteAsync(buffer);
                 }
-            }
+                else
+                    await next();
+            });
+            var listener = ServerBuilder.New().SetPort(9091).SetOwinApp(app.Build());
+            listener.Start();
         }
 
         private Thread StartThread(string name, Action action)
@@ -268,7 +246,7 @@ namespace Controller
                 var message = JsonConvert.DeserializeObject<NewMessage>(JsonConvert.SerializeObject(messageRaw));
                 var fileShareMessage = JsonConvert.DeserializeObject<FileShareMessage>(JsonConvert.SerializeObject(messageRaw));
 
-                if (message.channel == "C8Z1B1YKW")
+                if (message.channel == "CFQ0AF6CX")
                 {
                     Action complete = () =>
                     {
