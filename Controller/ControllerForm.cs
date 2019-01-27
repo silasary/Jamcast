@@ -290,6 +290,8 @@ namespace Controller
 
         private string GenerateHtmlMessages(List<JObject> messages)
         {
+            if (!_slackClient.IsReady)
+                return "... Loading Slack ...";
             messages = ((IEnumerable<JObject>)messages).Reverse().ToList();
 
             var channelRegex = new Regex("\\<\\#.+?\\|(.+?)\\>");

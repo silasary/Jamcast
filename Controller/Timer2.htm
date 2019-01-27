@@ -25,6 +25,9 @@
             h3 {
                 font-size: 800%;
             }
+			.midnight {
+				font-family: 'Wingdings';
+			}
         </style>
         <script type="text/javascript" src="./moment-with-locales.min.js"></script>
         <script type="text/javascript" src="./moment-timezone-with-data.min.js"></script>
@@ -34,7 +37,7 @@
             console.log(new Date());
             var timerElem = document.getElementById("timer");
             var body = document.getElementById("body");
-            var endDate = moment.tz("2018-01-28 15:00", "Australia/Melbourne");
+            var endDate = moment.tz("2019-01-27 15:00", "Australia/Melbourne");
             window.setInterval(function() {
                 var currentDate = moment.tz('Australia/Melbourne');
                 var duration = moment.duration(endDate.diff(currentDate));
@@ -47,11 +50,18 @@
                     if (hours.toFixed() == "1") {
                         hrsuf = '';
                     }
-                    timerElem.innerText = 
-                        //Math.floor(duration.asHours()).toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ' +
-                        duration.minutes().toFixed(0).padStart(2, '0') + ' min ' +
-                        duration.seconds().toFixed(0).padStart(2, '0') + ' sec ' +
-                        duration.milliseconds().toFixed(0).padStart(3, '0') + ' ms';
+					var timertext = ''
+					if (hours > 0)
+						timertext += Math.floor(duration.asHours()).toFixed(0).padStart(2, '0') + ' hr' + hrsuf + ' ';
+					timertext += duration.minutes().toFixed(0).padStart(2, '0') + ' min ' +
+								 duration.seconds().toFixed(0).padStart(2, '0') + ' sec ';
+					if (hours < 1)
+						timertext += duration.milliseconds().toFixed(0).padStart(3, '0') + ' ms';
+						
+					if (hours < 12 && hours > 9)
+						timertext += "\nGO TO BED";
+						
+                    timerElem.innerText = timertext;
                         body.style.color = 'white';
                     if (hours < 1) {
                         var l = Math.floor(duration.milliseconds() / 100);
@@ -94,6 +104,13 @@
                             body.style.color = 'white';
                         }
                     }
+					if (hours > 14 && hours < 15) {
+						if (timerElem.className != 'midnight'){
+							timerElem.className = 'midnight';
+						}
+					} else if (timerElem.className == 'midnight') {
+						timerElem.className = '';
+					}
                 }
             }, 16);
         </script>
