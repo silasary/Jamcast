@@ -1,0 +1,29 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+windows:
+  stage: build
+  tags:
+    - redpoint-games-linux
+  script:
+    - GOOS=windows GOARCH=amd64 go build client -o client.exe -ldflags -H=windowsgui
+  only:
+    - master
+
+mac:
+  stage: build
+  tags:
+    - redpoint-games-linux
+  script:
+    - GOOS=darwin GOARCH=amd64 go build client -o client-mac
+  only:
+    - master
+
+linux:
+  stage: build
+  tags:
+    - redpoint-games-linux
+  script:
+    - GOOS=linux GOARCH=amd64 go build client -o client-linux
+  only:
+    - master
