@@ -13,9 +13,11 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/getlantern/systray"
 	"gitlab.com/redpointgames/jamcast/client/platform"
 	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/window/download"
+	"gitlab.com/redpointgames/jamcast/image"
 	jamcast "gitlab.com/redpointgames/jamcast/proto"
 	"google.golang.org/grpc"
 )
@@ -67,6 +69,10 @@ func connectToController(token *jwt.Token) {
 				killOBS()
 			}
 			hasWrittenProfile = true
+
+			if enableSystray {
+				systray.SetIcon(image.CastIdle)
+			}
 
 			// wait for disconnection from controller
 			// todo: set up channel for shutdown listen, then select over both
