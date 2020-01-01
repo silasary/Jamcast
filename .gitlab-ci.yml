@@ -30,11 +30,11 @@ linux:
     paths: 
       - client-linux
 
-release:
-  stage: deploy
-  tags:
-    - redpoint-games-linux
-  script:
-    - ls -la
-  only:
-    - master
+# release:
+#   stage: deploy
+#   tags:
+#     - redpoint-games-linux
+#   script:
+#     - ls -la
+#   only:
+#     - master
