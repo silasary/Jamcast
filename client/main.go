@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"fyne.io/fyne/app"
 	"fyne.io/fyne/widget"
 )

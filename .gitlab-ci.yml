@@ -6,7 +6,7 @@ windows:
   tags:
     - redpoint-games-linux
   script:
-    - GOOS=windows GOARCH=amd64 go build -x client -o client.exe -ldflags -H=windowsgui
+    - GOOS=windows GOARCH=amd64 go build -x client -o ./client.exe -ldflags -H=windowsgui
   only:
     - master
 
@@ -15,7 +15,7 @@ mac:
   tags:
     - redpoint-games-linux
   script:
-    - GOOS=darwin GOARCH=amd64 go build -x client -o client-mac
+    - GOOS=darwin GOARCH=amd64 go build -x client -o ./client-mac
   only:
     - master
 
@@ -24,6 +24,6 @@ linux:
   tags:
     - redpoint-games-linux
   script:
-    - GOOS=linux GOARCH=amd64 go build -x client -o client-linux
+    - GOOS=linux GOARCH=amd64 go build -x client -o ./client-linux
   only:
     - master
