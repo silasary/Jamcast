@@ -8,6 +8,7 @@ import (
 	"github.com/getlantern/systray"
 
 	"gitlab.com/redpointgames/jamcast/auth"
+	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/window/intro"
 	"gitlab.com/redpointgames/jamcast/client/window/logs"
 )
@@ -30,7 +31,7 @@ func stageIntro() {
 		token, err := auth.GetCredentials()
 		if err != nil {
 			log.Println(err)
-			shutdown()
+			shutdown.Shutdown()
 		}
 
 		if enableSystray {
@@ -73,7 +74,7 @@ func stageIntro() {
 		signIn.ClickedCh <- struct{}{}
 	} else {
 		if !showSignIn() {
-			shutdown()
+			shutdown.Shutdown()
 		}
 	}
 }

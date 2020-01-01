@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package jamcast;
+
+option go_package = "jamcast";
+
+message ClientRequest {}
+
+message ClientResponse {}
+
+service Controller {
+    rpc Connect(ClientRequest) returns (stream ClientResponse) {}
+}

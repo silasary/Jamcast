@@ -5,6 +5,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
+	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/theme"
 	"gitlab.com/redpointgames/jamcast/client/window/download"
 )
@@ -14,7 +15,7 @@ func stageDownloadOBS(token *jwt.Token) {
 		imageData, err := theme.LoadImage(token)
 		if err != nil {
 			log.Println(err)
-			shutdown()
+			shutdown.Shutdown()
 		}
 
 		download.Show(clientApp, token, imageData)
