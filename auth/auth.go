@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
+	"gitlab.com/redpointgames/jamcast/env"
 )
 
 func HasCredentials() bool {
@@ -31,6 +32,7 @@ func GetCredentials() (*jwt.Token, error) {
 
 	existingToken, err := loadToken()
 	if existingToken != nil && err == nil {
+		log.Println("auth: provided existing token")
 		return existingToken, nil
 	}
 
@@ -92,28 +94,16 @@ func GetCredentials() (*jwt.Token, error) {
 		return nil, fmt.Errorf("expected to have token at this point")
 	}
 
+	log.Println("auth: returned token to caller")
 	return existingToken, nil
 }
 
-func getAppPath() string {
-	switch runtime.GOOS {
-	case "linux":
-	case "darwin":
-		return filepath.Join(os.Getenv("HOME"), ".jamcast")
-	case "windows":
-		return filepath.Join(os.Getenv("LOCALAPPDATA"), ".jamcast")
-	}
-	panic("unsupported platform")
-}
-
 func saveToken(token *jwt.Token) error {
-	os.MkdirAll(getAppPath(), 0755)
-	return ioutil.WriteFile(filepath.Join(getAppPath(), "token"), []byte(token.Raw), 0600)
+	return ioutil.WriteFile(filepath.Join(env.GetAppPath(), "token"), []byte(token.Raw), 0600)
 }
 
 func loadToken() (*jwt.Token, error) {
-	os.MkdirAll(getAppPath(), 0755)
-	tokenRaw, err := ioutil.ReadFile(filepath.Join(getAppPath(), "token"))
+	tokenRaw, err := ioutil.ReadFile(filepath.Join(env.GetAppPath(), "token"))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

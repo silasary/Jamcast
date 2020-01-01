@@ -1,32 +1,67 @@
 package main
 
 import (
+	"io"
 	"log"
+	"os"
 
+	"fyne.io/fyne"
 	"fyne.io/fyne/app"
-	"gitlab.com/redpointgames/jamcast/auth"
-	"gitlab.com/redpointgames/jamcast/client/window/intro"
+	"github.com/getlantern/systray"
+
+	"gitlab.com/redpointgames/jamcast/image"
+	"gitlab.com/redpointgames/jamcast/client/window/logs"
 )
 
-func main() {
+var clientApp fyne.App
+var systrayReady chan bool
+
+const enableSystray = true
+
+func main() { 
+	// split logs between stdout and our internal logging
+	log.SetOutput(io.MultiWriter(os.Stdout, logs.GetInMemoryLogBuffer()))
+
 	log.Println("starting JamCast")
 
-	app := app.New()
+	clientApp = app.New()
+	clientApp.SetIcon(fyne.NewStaticResource("icon.png", image.IconPNG))
 
-	if !auth.HasCredentials() {
-		intent := intro.Show(app)
-		if intent == intro.IntentQuit {
-			app.Quit()
-			return
-		}
+	if enableSystray {
+		systrayReady = make(chan bool)
+		go func() {
+			systray.Run(func() {
+				systray.SetIcon(image.Icon)
+				systray.SetTitle("JamCast")
+				systray.SetTooltip("JamCast - Not signed in")
+
+				systrayReady <- true
+			}, func() {})
+		}()
 	}
 
-	token, err := auth.GetCredentials()
-	if err != nil {
-		log.Fatalln(err)
+	go func() {
+		stageIntro()
+	}()
+
+	for {
+		clientApp.Run()
+
+		clientApp = app.New()
+		clientApp.SetIcon(fyne.NewStaticResource("icon.png", image.IconPNG))
 	}
 
-	log.Println(token)
+	if enableSystray {
+		systray.Quit()
+	}
+}
 
-	log.Println("normal exit")
+func shutdown() {
+	log.Println("shutdown: abnormal shutdown!")
+
+	if enableSystray {
+		systray.Quit()
+	} else {
+		clientApp.Quit()
+	}
 }

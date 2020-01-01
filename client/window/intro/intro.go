@@ -3,6 +3,8 @@ package intro
 import (
 	"log"
 
+	"gitlab.com/redpointgames/jamcast/image"
+
 	"fyne.io/fyne"
 	"fyne.io/fyne/widget"
 )
@@ -10,7 +12,7 @@ import (
 type Intent int
 
 const (
-	IntentQuit Intent = iota
+	IntentClose Intent = iota
 	IntentSignIn
 )
 
@@ -20,11 +22,12 @@ func Show(app fyne.App) Intent {
 		Bold: true,
 	}
 
-	intent := IntentQuit
+	intent := IntentClose
 
 	log.Println("intro: showing intro window")
 
 	w := app.NewWindow("JamCast")
+	w.SetIcon(fyne.NewStaticResource("icon.png", image.IconPNG))
 	w.SetContent(widget.NewVBox(
 		title,
 		widget.NewLabel(
@@ -38,9 +41,9 @@ func Show(app fyne.App) Intent {
 				intent = IntentSignIn
 				w.Close()
 			}),
-			widget.NewButton("Quit", func() {
-				log.Println("intro: user chose 'quit' intent")
-				intent = IntentQuit
+			widget.NewButton("Close", func() {
+				log.Println("intro: user chose 'close' intent")
+				intent = IntentClose
 				w.Close()
 			}),
 		),
@@ -48,7 +51,7 @@ func Show(app fyne.App) Intent {
 
 	w.CenterOnScreen()
 
-	w.ShowAndRun()
+	w.Show()
 
 	return intent
 }
