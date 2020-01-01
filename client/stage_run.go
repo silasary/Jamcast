@@ -10,10 +10,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"gitlab.com/redpointgames/jamcast/client/platform"
 	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/window/download"
 	jamcast "gitlab.com/redpointgames/jamcast/proto"
@@ -165,9 +165,7 @@ func killOBS() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow: true,
-	}
+	platform.HideWindow(cmd)
 	cmd.Start()
 	cmd.Wait()
 }
@@ -241,9 +239,7 @@ func manageOBS(token *jwt.Token) {
 			"bin",
 			"64bit",
 		)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow: true,
-		}
+		platform.HideWindow(cmd)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -270,7 +266,10 @@ func acceptLicense() {
 	}
 	ioutil.WriteFile(
 		ini,
-		[]byte("[General]\r\nLicenseAccepted=true\r\nFirstRun=true"),
+		[]byte(
+			"[General]\r\nLicenseAccepted=true\r\nFirstRun=true\r\nEnableAutoUpdates=false\r\n"+
+				"[BasicWindow]\r\nSysTrayEnabled=false\r\n",
+		),
 		os.ModePerm,
 	)
 }
