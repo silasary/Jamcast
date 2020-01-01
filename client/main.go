@@ -4,25 +4,29 @@ import (
 	"log"
 
 	"fyne.io/fyne/app"
-	"fyne.io/fyne/widget"
+	"gitlab.com/redpointgames/jamcast/auth"
+	"gitlab.com/redpointgames/jamcast/client/window/intro"
 )
 
 func main() {
-	log.Println("creating app")
+	log.Println("starting JamCast")
 
-	a := app.New()
+	app := app.New()
 
-	log.Println("creating window")
+	if !auth.HasCredentials() {
+		intent := intro.Show(app)
+		if intent == intro.IntentQuit {
+			app.Quit()
+			return
+		}
+	}
 
-	w := a.NewWindow("Hello")
-	w.SetContent(widget.NewVBox(
-		widget.NewLabel("Hello Fyne!"),
-		widget.NewButton("Quit", func() {
-			a.Quit()
-		}),
-	))
+	token, err := auth.GetCredentials()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	log.Println("calling show and run")
+	log.Println(token)
 
-	w.ShowAndRun()
+	log.Println("normal exit")
 }
