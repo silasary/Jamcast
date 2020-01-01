@@ -6,7 +6,7 @@ windows:
   tags:
     - redpoint-games-windows
   script:
-    - $env:GOOS=windows; $env:GOARCH=amd64; go build -x -o ./client.exe -ldflags -H=windowsgui ./client
+    - $env:GOOS="windows"; $env:GOARCH="amd64"; C:\Go\bin\go.exe build -x -o ./client.exe -ldflags -H=windowsgui ./client
   only:
     - master
 
