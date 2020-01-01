@@ -165,6 +165,9 @@ func killOBS() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow: true,
+	}
 	cmd.Start()
 	cmd.Wait()
 }
@@ -239,7 +242,7 @@ func manageOBS(token *jwt.Token) {
 			"64bit",
 		)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
-			// HideWindow: true,
+			HideWindow: true,
 		}
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout

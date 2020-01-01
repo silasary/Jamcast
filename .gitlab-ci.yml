@@ -6,10 +6,10 @@ windows:
   tags:
     - redpoint-games-windows
   script:
-    - $env:GOOS="windows"; $env:GOARCH="amd64"; C:\Go\bin\go.exe build -x -o ./client.exe -ldflags -H=windowsgui ./client
+    - $env:GOOS="windows"; $env:GOARCH="amd64"; C:\Go\bin\go.exe build -x -o ./JamCast.exe -ldflags -H=windowsgui ./client
   artifacts:
     paths: 
-      - client.exe
+      - JamCast.exe
 
 # mac:
 #   stage: build
@@ -25,10 +25,10 @@ linux:
   tags:
     - redpoint-games-linux
   script:
-    - GOOS=linux GOARCH=amd64 go build -x -o ./client-linux ./client
+    - GOOS=linux GOARCH=amd64 go build -x -o ./jamcast ./client
   artifacts:
     paths: 
-      - client-linux
+      - jamcast
 
 # release:
 #   stage: deploy

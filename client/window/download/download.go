@@ -131,6 +131,13 @@ func Show(app fyne.App, token *jwt.Token, imageData []byte) {
 
 	w.Show()
 
+	c := make(chan bool)
+	w.SetOnClosed(func() {
+		c <- true
+	})
+
+	<-c
+
 	log.Println("download: window complete")
 
 }

@@ -56,6 +56,7 @@ func stageIntro() {
 		systray.AddSeparator()
 		showLogs := systray.AddMenuItem("Show logs", "Show the client logs")
 		signIn = systray.AddMenuItem("Sign in", "Sign into JamCast")
+		exit := systray.AddMenuItem("Exit", "Exit JamCast")
 
 		go func() {
 			for range signIn.ClickedCh {
@@ -67,6 +68,11 @@ func stageIntro() {
 		go func() {
 			for range showLogs.ClickedCh {
 				logs.Show(clientApp)
+			}
+		}()
+		go func() {
+			for range exit.ClickedCh {
+				shutdown.Shutdown()
 			}
 		}()
 

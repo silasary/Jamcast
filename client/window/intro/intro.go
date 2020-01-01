@@ -53,5 +53,12 @@ func Show(app fyne.App) Intent {
 
 	w.Show()
 
+	c := make(chan bool)
+	w.SetOnClosed(func() {
+		c <- true
+	})
+
+	<-c
+
 	return intent
 }
