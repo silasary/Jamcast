@@ -7,8 +7,9 @@ windows:
     - redpoint-games-windows
   script:
     - $env:GOOS="windows"; $env:GOARCH="amd64"; C:\Go\bin\go.exe build -x -o ./client.exe -ldflags -H=windowsgui ./client
-  only:
-    - master
+  artifacts:
+    paths: 
+      - client.exe
 
 # mac:
 #   stage: build
@@ -25,5 +26,15 @@ linux:
     - redpoint-games-linux
   script:
     - GOOS=linux GOARCH=amd64 go build -x -o ./client-linux ./client
+  artifacts:
+    paths: 
+      - client-linux
+
+release:
+  stage: deploy
+  tags:
+    - redpoint-games-linux
+  script:
+    - ls -la
   only:
     - master
