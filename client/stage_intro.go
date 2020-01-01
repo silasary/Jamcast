@@ -9,7 +9,7 @@ import (
 
 	"gitlab.com/redpointgames/jamcast/auth"
 	"gitlab.com/redpointgames/jamcast/client/window/intro"
-	"gitlab.com/redpointgames/jamcast/client/window/l"gs
+	"gitlab.com/redpointgames/jamcast/client/window/logs"
 )
 
 func stageIntro() {
