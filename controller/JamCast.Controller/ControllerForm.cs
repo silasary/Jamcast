@@ -59,107 +59,90 @@ namespace JamCast.Controller
 
             public override async Task Connect(ClientRequest request, IServerStreamWriter<ClientResponse> responseStream, ServerCallContext context)
             {
-                var remoteEndPoint = new IPEndPoint(IPAddress.Parse(new Uri(context.Peer).Host), 0);
-
-                if (!_form._remoteEndpoints.Contains(remoteEndPoint))
+                try
                 {
-                    _form.Log(null, "Client not already seen, adding to remote endpoints and adding to WS list");
-                    _form._remoteEndpoints.Add(remoteEndPoint);
+                    var remoteEndPoint = IPEndPoint.Parse(context.Peer.Substring("ipv4:".Length));
 
-                    var webSocketEndpoint = new IPEndPoint(((IPEndPoint)remoteEndPoint).Address, 4444);
-                    var websocket = new OBSWebsocket();
-                    _form._websockets[remoteEndPoint] = websocket;
-                    _form.RegisterWebsocketEvents(websocket);
-
-                    _form._falconNineIsInStartup.Add(remoteEndPoint);
-
-                    _form.Log(null, "Sleeping for 2 seconds while we wait for OBS to start up on the remote client");
-                    await Task.Delay(2000);
-                    while (true)
+                    if (!_form._remoteEndpoints.Contains(remoteEndPoint))
                     {
-                        if (!_form._remoteEndpoints.Contains(remoteEndPoint))
-                        {
-                            _form.Log(null, "Remote endpoint has been disconnected (error: this should never happen)");                            
-                            return;
-                        }
+                        _form.Log(null, "Client not already seen, adding to remote endpoints and adding to WS list");
+                        _form._remoteEndpoints.Add(remoteEndPoint);
 
-                        _form.Log(null, "Connecting to OBS websocket at " + webSocketEndpoint.ToString());
-                        try
+                        var webSocketEndpoint = new IPEndPoint(((IPEndPoint)remoteEndPoint).Address, 4444);
+                        var websocket = new OBSWebsocket
                         {
-                            websocket.Connect("ws://" + webSocketEndpoint.ToString(), null);
-                            if (!websocket.IsConnected)
+                            WSTimeout = TimeSpan.FromSeconds(2)
+                        };
+                        _form._websockets[remoteEndPoint] = websocket;
+                        _form.RegisterWebsocketEvents(websocket);
+
+                        _form._falconNineIsInStartup.Add(remoteEndPoint);
+
+                        _form.Log(null, "Sleeping for 2 seconds while we wait for OBS to start up on the remote client");
+                        await Task.Delay(2000);
+                        while (true)
+                        {
+                            if (!_form._remoteEndpoints.Contains(remoteEndPoint))
+                            {
+                                _form.Log(null, "Remote endpoint has been disconnected (error: this should never happen)");
+                                return;
+                            }
+
+                            _form.Log(null, "Connecting to OBS websocket at " + webSocketEndpoint.ToString());
+                            try
+                            {
+                                websocket.Connect("ws://" + webSocketEndpoint.ToString(), null);
+                                if (!websocket.IsConnected)
+                                {
+                                    _form.Log(null, "Unable to connect to WS... sleeping 2 seconds and trying again");
+                                    await Task.Delay(2000);
+                                    continue;
+                                }
+
+                                _form.Log(null, "Connected to OBS websocket at " + webSocketEndpoint.ToString());
+                                break;
+                            }
+                            catch (Exception ex)
                             {
                                 _form.Log(null, "Unable to connect to WS... sleeping 2 seconds and trying again");
                                 await Task.Delay(2000);
-                                continue;
-                            }
 
-                            _form.Log(null, "Connected to OBS websocket at " + webSocketEndpoint.ToString());
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            _form.Log(null, "Unable to connect to WS... sleeping 2 seconds and trying again");
-                            await Task.Delay(2000);
-
-                            // todo: check for disconnect on grpc
-
-                            /*
-
-                            // Check if TCP has disconnected
-                            if (client.Client.Poll(0, SelectMode.SelectRead))
-                            {
-                                byte[] buff = new byte[1];
-                                try
+                                if (context.CancellationToken.IsCancellationRequested)
                                 {
-                                    if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
-                                    {
-                                        Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + " during OBS connect, disconnecting");
+                                    _form.Log(null, "Unable to talk to " + remoteEndPoint + " during OBS connect, disconnecting");
 
-                                        _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
-                                        _websockets[client.Client.RemoteEndPoint].Disconnect();
-                                        UpdateStatus();
-                                        return;
-                                    }
-                                }
-                                catch (SocketException exx) when (exx.SocketErrorCode == SocketError.ConnectionReset)
-                                {
-                                    Log(null, "Unable to talk to " + client.Client.RemoteEndPoint + " during OBS connect, disconnecting");
-
-                                    _remoteEndpoints.Remove(client.Client.RemoteEndPoint);
-                                    _websockets[client.Client.RemoteEndPoint].Disconnect();
-                                    UpdateStatus();
+                                    _form._remoteEndpoints.Remove(remoteEndPoint);
+                                    _form._websockets[remoteEndPoint].Disconnect();
+                                    _form.UpdateStatus();
                                     return;
                                 }
+
+                                await Task.Delay(500);
                             }
-
-                            */
-
-                            await Task.Delay(500);
-
-                            /*
-                             * 
-                            Thread.Sleep(500);
-
-                            try
-                            {
-                                client.Client.Send(new byte[] { 1 });
-                            }
-                            catch
-                            {
-                                Log(null, "Unable to send data to client during OBS connect: " + client.Client.RemoteEndPoint.ToString());
-                            }
-                            */
                         }
+
+                        _form._falconNineIsInStartup.Remove(remoteEndPoint);
+
+                        _form.Log(null, "Updating client list");
+                        _form.UpdateStatus();
                     }
 
-                    _form._falconNineIsInStartup.Remove(remoteEndPoint);
+                    while (!context.CancellationToken.IsCancellationRequested)
+                    {
+                        await Task.Delay(500);
+                    }
 
-                    _form.Log(null, "Updating client list");
+                    _form.Log(null, "Client " + remoteEndPoint + " disconnected");
+
+                    _form._remoteEndpoints.Remove(remoteEndPoint);
+                    _form._websockets[remoteEndPoint].Disconnect();
                     _form.UpdateStatus();
+                    return;
                 }
-
-                return await base.Connect(request, responseStream, context);
+                catch (Exception ex)
+                {
+                    _form.Log(null, "error while handling gRPC: " + ex.Message);
+                }
             }
         }
 
@@ -191,7 +174,7 @@ namespace JamCast.Controller
             _grpcServer = new Grpc.Core.Server
             {
                 Services = { Jamcast.Controller.BindService(new GrpcServer(this)) },
-                Ports = { new ServerPort("0.0.0.0", 8080, ServerCredentials.Insecure) },
+                Ports = { new ServerPort("", 8080, ServerCredentials.Insecure) },
             };
             _grpcServer.Start();
 
@@ -512,7 +495,7 @@ namespace JamCast.Controller
                     Log(null, "Current standby is: " + (_standbyInput == null ? "<none>" : _standbyInput.ToString()));
                     Log(null, "Current active is: " + (_currentInput == null ? "<none>" : _currentInput.ToString()));
 
-                    var endpoints = _remoteEndpoints.ToList();
+                    var endpoints = _remoteEndpoints.Where(x => !_falconNineIsInStartup.Contains(x)).ToList();
                     if (endpoints.Count == 0)
                     {
                         // Can't prep anything - not enough clients.
@@ -558,6 +541,15 @@ namespace JamCast.Controller
                                 Log(null, _standbyInput + " during recording start: " + ex.ToString());
                             }
                             _needsPrepIntoStandby = false;
+
+                            if (_currentInputIsPrimary)
+                            {
+                                _secondaryForwarder.ExpectedIpAddress = ((IPEndPoint)_standbyInput).Address;
+                            }
+                            else
+                            {
+                                _primaryForwarder.ExpectedIpAddress = ((IPEndPoint)_standbyInput).Address;
+                            }
                         }
                         _needsPrepIntoStandby = false;
                         continue;
