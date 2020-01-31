@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +18,7 @@ import (
 )
 
 func HasCredentials() bool {
-	token, err := loadToken()
+	token, _, err := loadToken()
 	if token != nil && err == nil {
 		return true
 	}
@@ -30,7 +31,7 @@ func HasCredentials() bool {
 func GetCredentials() (*jwt.Token, error) {
 	log.Println("auth: credentials requested")
 
-	existingToken, err := loadToken()
+	existingToken, _, err := loadToken()
 	if existingToken != nil && err == nil {
 		log.Println("auth: provided existing token")
 		return existingToken, nil
@@ -98,20 +99,60 @@ func GetCredentials() (*jwt.Token, error) {
 	return existingToken, nil
 }
 
+func EraseCredentials() {
+	log.Println("auth: erased credentials")
+	os.Remove(filepath.Join(env.GetAppPath(), "token"))
+}
+
+func MakeRequest(url string, values url.Values) (string, error) {
+	token, rawToken, err := loadToken()
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+
+	fullURL := fmt.Sprintf("%s/e/%s%s", getJamHost(), token.Claims.(jwt.MapClaims)["site.urlID"], url)
+
+	req, err := http.NewRequest("POST", fullURL, strings.NewReader(values.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("JWT", rawToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("got status code: %d", resp.StatusCode)
+	}
+
+	return string(body), nil
+}
+
 func saveToken(token *jwt.Token) error {
 	return ioutil.WriteFile(filepath.Join(env.GetAppPath(), "token"), []byte(token.Raw), 0600)
 }
 
-func loadToken() (*jwt.Token, error) {
+func loadToken() (*jwt.Token, string, error) {
 	tokenRaw, err := ioutil.ReadFile(filepath.Join(env.GetAppPath(), "token"))
 	if os.IsNotExist(err) {
-		return nil, nil
+		return nil, "", nil
 	}
 	token, err := readAndVerifyToken(string(tokenRaw))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return token, err
+	return token, string(tokenRaw), err
 }
 
 func readAndVerifyToken(tokenRaw string) (*jwt.Token, error) {
@@ -134,7 +175,7 @@ func getJamHost() string {
 	if os.Getenv("JAMHOST") != "" {
 		return os.Getenv("JAMHOST")
 	}
-	return "https://beta.jamhost.org"
+	return "https://jamhost.org"
 }
 
 func openBrowser(url string) error {

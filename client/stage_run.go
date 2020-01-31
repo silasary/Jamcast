@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/getlantern/systray"
+	"gitlab.com/redpointgames/jamcast/auth"
 	"gitlab.com/redpointgames/jamcast/client/platform"
 	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/window/download"
@@ -41,16 +43,22 @@ func connectToController(token *jwt.Token) {
 
 	for shouldRun {
 
-		// todo: get IP address from JamHost API
-		// todo: make sure we re-fetch this after on each connection attempt
-		controllerIPAddress := "127.0.0.1"
+		log.Println("run: fetching controller IP")
+		controllerIPAddress, err := auth.MakeRequest("/jamcast/controllerip", url.Values{})
+		if err != nil {
+			log.Printf("error: can't fetch controller IP and port: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
 
-		conn, err := grpc.Dial(fmt.Sprintf("%s:8080", controllerIPAddress), grpc.WithInsecure())
+		log.Println("run: got controller IP", controllerIPAddress)
+
+		conn, err := grpc.Dial(controllerIPAddress, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("error: can't connect to controller: %v", err)
 			time.Sleep(time.Second)
+			continue
 		}
-		defer conn.Close()
 
 		log.Println("run: connected to controller")
 
@@ -59,6 +67,7 @@ func connectToController(token *jwt.Token) {
 		if err != nil {
 			log.Printf("error: can't connect to controller: %v", err)
 			time.Sleep(time.Second)
+			conn.Close()
 			continue
 		}
 		for shouldRun {
@@ -89,6 +98,8 @@ func connectToController(token *jwt.Token) {
 				break
 			}
 		}
+
+		conn.Close()
 	}
 }
 

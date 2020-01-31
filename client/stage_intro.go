@@ -15,6 +15,7 @@ import (
 
 func stageIntro() {
 	var signIn *systray.MenuItem
+	var signOut *systray.MenuItem
 
 	showSignIn := func() bool {
 		log.Println("intro: sign in requested")
@@ -43,6 +44,8 @@ func stageIntro() {
 			signIn.Hide()
 		}
 
+		signOut.Show()
+
 		stageDownloadOBS(token)
 
 		return true
@@ -56,6 +59,8 @@ func stageIntro() {
 		systray.AddSeparator()
 		showLogs := systray.AddMenuItem("Show logs", "Show the client logs")
 		signIn = systray.AddMenuItem("Sign in", "Sign into JamCast")
+		signOut = systray.AddMenuItem("Sign out", "Sign out of JamCast")
+		signOut.Hide()
 		exit := systray.AddMenuItem("Exit", "Exit JamCast")
 
 		go func() {
@@ -63,6 +68,16 @@ func stageIntro() {
 				if showSignIn() {
 					return
 				}
+			}
+		}()
+		go func() {
+			for range signOut.ClickedCh {
+				// erase auth and relaunch
+				auth.EraseCredentials()
+
+				// todo: relaunch
+				log.Println("todo: relaunch needed")
+				shutdown.Shutdown()
 			}
 		}()
 		go func() {

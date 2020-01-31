@@ -3,12 +3,13 @@ package download
 import (
 	"archive/zip"
 	"fmt"
-	"gitlab.com/redpointgames/jamcast/env"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gitlab.com/redpointgames/jamcast/env"
 )
 
 func taskDownloadOBS(callback func(label string, progress float64, infinite bool)) error {
@@ -90,34 +91,33 @@ func (wc *progressMonitor) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-func downloadAndUnpack(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
-	if exists, err := pathExists(zipPath); !exists || err != nil {
-		out, err := os.Create(zipPath)
-		if err != nil {
-			return err
-		}
-		defer out.Close()
-
-		resp, err := http.Get(url)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		counter := progressMonitor{
-			total: uint64(resp.ContentLength),
-			callback: func(progress float64) {
-				callback("Downloading", progress, false)
-			},
-		}
-		_, err = io.Copy(out, io.TeeReader(resp.Body, &counter))
-		if err != nil {
-			return err
-		}
+func download(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
+	out, err := os.Create(zipPath)
+	if err != nil {
+		return err
 	}
+	defer out.Close()
 
-	callback("Installing", 0, true)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
+	counter := progressMonitor{
+		total: uint64(resp.ContentLength),
+		callback: func(progress float64) {
+			callback("Downloading", progress, false)
+		},
+	}
+	_, err = io.Copy(out, io.TeeReader(resp.Body, &counter))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func unpack(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
 	z, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return err
@@ -156,6 +156,34 @@ func downloadAndUnpack(url string, zipPath string, directory string, callback fu
 
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func downloadAndUnpack(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
+	didDownload := false
+	if exists, err := pathExists(zipPath); !exists || err != nil {
+		err = download(url, zipPath, directory, callback)
+		if err != nil {
+			return err
+		}
+		didDownload = true
+	}
+
+	callback("Installing", 0, true)
+
+	err := unpack(url, zipPath, directory, callback)
+	if err != nil {
+		if didDownload {
+			return err
+		} else {
+			// cached file might be partial download or corrupt
+			os.Remove(zipPath)
+
+			// retry
+			return downloadAndUnpack(url, zipPath, directory, callback)
 		}
 	}
 
