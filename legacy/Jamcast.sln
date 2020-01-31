@@ -8,13 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Jenkinsfile = Jenkinsfile
 	EndProjectSection
 EndProject
-Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "JamCast.Controller.Package", "JamCast.Controller.Package\JamCast.Controller.Package.wapproj", "{86BB8D17-28D8-46F9-AD36-6D705798B2F1}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamCast.Controller", "JamCast.Controller\JamCast.Controller.csproj", "{7500B624-EF58-4E74-9A41-896660E35388}"
-EndProject
-Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "JamCast.Client.Package", "JamCast.Client.Package\JamCast.Client.Package.wapproj", "{E9855096-AA59-45EA-89A1-59A7E44D18E1}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamCast.Client", "JamCast.Client\JamCast.Client.csproj", "{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,42 +18,12 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|x64.ActiveCfg = Debug|x64
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|x64.Build.0 = Debug|x64
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Debug|x64.Deploy.0 = Debug|x64
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|Any CPU.Deploy.0 = Release|Any CPU
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|x64.ActiveCfg = Release|x64
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|x64.Build.0 = Release|x64
-		{86BB8D17-28D8-46F9-AD36-6D705798B2F1}.Release|x64.Deploy.0 = Release|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Debug|x64.ActiveCfg = Debug|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Debug|x64.Build.0 = Debug|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Release|Any CPU.ActiveCfg = Release|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Release|x64.ActiveCfg = Release|x64
 		{7500B624-EF58-4E74-9A41-896660E35388}.Release|x64.Build.0 = Release|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|x64.ActiveCfg = Debug|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|x64.Build.0 = Debug|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Debug|x64.Deploy.0 = Debug|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|Any CPU.Deploy.0 = Release|Any CPU
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|x64.ActiveCfg = Release|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|x64.Build.0 = Release|x64
-		{E9855096-AA59-45EA-89A1-59A7E44D18E1}.Release|x64.Deploy.0 = Release|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Debug|x64.ActiveCfg = Debug|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Debug|x64.Build.0 = Debug|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Release|Any CPU.ActiveCfg = Release|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Release|x64.ActiveCfg = Release|x64
-		{B071BC32-1A0A-4DAD-AEF2-FE2EF0A8BD7B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

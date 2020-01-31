@@ -1,0 +1,59 @@
+<html>
+    <head><meta charset="utf-8"/></head>
+    <body>
+        <style>
+            html, body {
+                color: white;
+                font-family: Arial;
+                margin: 0px;
+                padding: 0;
+            }
+            h2{
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+        <script type="text/javascript" src="./moment.min.js"></script>
+        <h2 id="timer">Test</h2>
+        <script>
+            var timerElem = document.getElementById("timer");
+            var endDate = moment.utc({
+                year: 2018,
+                month: 1,
+                day: 28,
+                hour: 15,
+                minute: 0,
+                second: 0
+            });
+            window.setInterval(function() {
+                var currentDate = moment.utc();
+                var duration = moment.duration(endDate.diff(currentDate));
+                if (duration.asSeconds() < 0) {
+                    timerElem.innerText = 'GAME JAM OVER!';
+                    timerElem.style.color = 'red';
+                } else {
+                    timerElem.innerText = 
+                        duration.hours().toFixed(0).padStart(2, '0') + ':' +
+                        duration.minutes().toFixed(0).padStart(2, '0') + ':' +
+                        duration.seconds().toFixed(0).padStart(2, '0') + '.' +
+                        duration.milliseconds().toFixed(0).padStart(3, '0');
+                    timerElem.style.color = 'white';
+                    var hours = duration.hours();
+                    if (hours < 1) {
+                        if (duration.milliseconds() % 500 < 250) {
+                            timerElem.style.color = 'red';
+                        } else {
+                            timerElem.style.color = 'white';
+                        }
+                    } else if (hours < 3) {
+                        if (duration.milliseconds() % 1000 < 500) {
+                            timerElem.style.color = 'orange';
+                        } else {
+                            timerElem.style.color = 'white';
+                        }
+                    }
+                }
+            }, 16);
+        </script>
+    </body>
+</html>

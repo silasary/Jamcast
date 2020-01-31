@@ -2,3 +2,6 @@
 /client/client
 /controller/controller.exe
 /controller/controller
+controller/.vs/
+controller/JamCast.Controller/bin/
+controller/JamCast.Controller/obj/
