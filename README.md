@@ -46,7 +46,7 @@ go build -o ./jamcast ./client
 
 ## Building the controller from source
 
-Open the controller solution file in Visual Studio 2019, with the .NET Core 3.0 Desktop target installed. The controller software only supports Windows.
+Open the controller solution file in Visual Studio 2019, with the .NET Core 3.0 SDK and .NET Desktop workload installed. The controller software only supports Windows.
 
 ### Running the controller
 
