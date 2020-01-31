@@ -12,7 +12,7 @@ If you're just looking to run JamCast at your event, you can download JamCast
 from your event page in JamHost. **You do not need to build JamCast from 
 source in order to use it.**
 
-## Building from source
+## Building the client from source
 
 If you want to build it from source, follow the instructions below:
 
@@ -24,7 +24,6 @@ choco install -y golang mingw
 
 # Build it
 go build -o JamCast.exe -ldflags -H=windowsgui ./client
-go build -o JamCast-Controller.exe ./controller
 ```
 
 ### macOS
@@ -42,9 +41,21 @@ sudo ldconfig
 
 # Build it
 go build -o ./jamcast ./client
-go build -o ./jamcast-controller ./controller
 
 ```
+
+## Building the controller from source
+
+Open the controller solution file in Visual Studio 2019, with the .NET Core 3.0 Desktop target installed. The controller software only supports Windows.
+
+### Running the controller
+
+To run the controller, perform the following steps:
+
+- Download and extract [OBS 22.0](https://github.com/obsproject/obs-studio/releases/download/22.0.2/OBS-Studio-22.0.2-Full-x64.zip) somewhere on the desktop.
+- Download [OBS WebSocket 4.5.0](https://github.com/Palakis/obs-websocket/releases/download/4.5.0/obs-websocket-4.5.0-Windows.zip) and copy it's contents over the top of the OBS folder.
+- Launch OBS, skip through the wizard. If you get prompted to upgrade versions, just say "Skip Version".
+- Launch the controller software.
 
 ## Workflow
 
