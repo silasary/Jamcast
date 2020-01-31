@@ -55,6 +55,7 @@ To run the controller, perform the following steps:
 - Download and extract [OBS 22.0](https://github.com/obsproject/obs-studio/releases/download/22.0.2/OBS-Studio-22.0.2-Full-x64.zip) somewhere on the desktop.
 - Download [OBS WebSocket 4.5.0](https://github.com/Palakis/obs-websocket/releases/download/4.5.0/obs-websocket-4.5.0-Windows.zip) and copy it's contents over the top of the OBS folder.
 - Launch OBS, skip through the wizard. If you get prompted to upgrade versions, just say "Skip Version".
+- In "Scene Collection", select "Import" and then locate the "Scene.json" file underneath "JamCast.Controller". Switch to that scene (it will probably be called "Untitled (2)").
 - Launch the controller software.
 
 ## Workflow

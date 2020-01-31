@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
@@ -44,16 +45,16 @@ func connectToController(token *jwt.Token) {
 	for shouldRun {
 
 		log.Println("run: fetching controller IP")
-		controllerIPAddress, err := auth.MakeRequest("/jamcast/controllerip", url.Values{})
+		controllerIPAddressAndPort, err := auth.MakeRequest("/jamcast/controllerip", url.Values{})
 		if err != nil {
 			log.Printf("error: can't fetch controller IP and port: %v", err)
 			time.Sleep(time.Second)
 			continue
 		}
 
-		log.Println("run: got controller IP", controllerIPAddress)
+		log.Println("run: got controller IP", controllerIPAddressAndPort)
 
-		conn, err := grpc.Dial(controllerIPAddress, grpc.WithInsecure())
+		conn, err := grpc.Dial(controllerIPAddressAndPort, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("error: can't connect to controller: %v", err)
 			time.Sleep(time.Second)
@@ -72,6 +73,7 @@ func connectToController(token *jwt.Token) {
 		}
 		for shouldRun {
 			// we are now connected, set up OBS profiles initially
+			controllerIPAddress, _, _ := net.SplitHostPort(controllerIPAddressAndPort)
 			if obsWriteAllProfiles(controllerIPAddress) {
 				// forcibly restart OBS because we changed profile information
 				log.Println("run: killing OBS because configuration changed")
