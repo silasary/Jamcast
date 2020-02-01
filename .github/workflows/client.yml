@@ -1,0 +1,32 @@
+name: Go
+on: [push]
+jobs:
+
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build Windows
+      run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast.exe -ldflags -H=windowsgui ./client
+      shell: powershell
+    
+    - run: dir
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "v${{ github.sha }}"
+          prerelease: false
+          title: "Latest"
+          files: |
+            *.exe
+      if: github.ref == 'refs/heads/master'
