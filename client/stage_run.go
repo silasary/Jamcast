@@ -285,8 +285,10 @@ func acceptLicense() {
 		ini,
 		[]byte(
 			"[General]\r\nLicenseAccepted=true\r\nFirstRun=true\r\nEnableAutoUpdates=false\r\n"+
-				"[BasicWindow]\r\nSysTrayEnabled=true\r\n[Basic]\r\nSceneCollection=JamCast\r\nSceneCollectionFile=JamCast\r\n",
+				"[BasicWindow]\r\nSysTrayEnabled=true\r\nSysTrayWhenStarted=true\r\nSysTrayMinimizeToTray=true\r\n"+
+				"[Basic]\r\nSceneCollection=JamCast\r\nSceneCollectionFile=JamCast\r\n",
 		),
 		os.ModePerm,
 	)
 }
+
