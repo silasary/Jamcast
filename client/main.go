@@ -21,11 +21,17 @@ var systrayReady chan bool
 const enableSystray = true
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--self-update" {
+		finishSelfUpdate(os.Args[2])
+		return
+	}
 
 	// split logs between stdout and our internal logging
 	log.SetOutput(io.MultiWriter(logs.GetInMemoryLogBuffer(), os.Stdout))
 
 	shutdown.SetupShutdownGlobalHandler()
+
+	log.Println("currently version ", version)
 
 	log.Println("performing self update check")
 
