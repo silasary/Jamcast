@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
@@ -26,6 +27,10 @@ func main() {
 
 	shutdown.SetupShutdownGlobalHandler()
 
+	log.Println("performing self update check")
+
+	doSelfUpdate()
+	
 	log.Println("starting JamCast")
 
 	clientApp = app.New()
@@ -55,9 +60,6 @@ func main() {
 	go func() {
 		stageIntro()
 	}()
-
-
-    doSelfUpdate()
 
     go func() {
         for {
