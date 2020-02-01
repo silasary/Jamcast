@@ -495,7 +495,7 @@ namespace JamCast.Controller
                     Log(null, "Current standby is: " + (_standbyInput == null ? "<none>" : _standbyInput.ToString()));
                     Log(null, "Current active is: " + (_currentInput == null ? "<none>" : _currentInput.ToString()));
 
-                    var endpoints = _remoteEndpoints.Where(x => !_falconNineIsInStartup.Contains(x)).ToList();
+                    var endpoints = _remoteEndpoints.Where(x => !_falconNineIsInStartup.Contains(x) && _websockets.ContainsKey(x)).ToList();
                     if (endpoints.Count == 0)
                     {
                         // Can't prep anything - not enough clients.
