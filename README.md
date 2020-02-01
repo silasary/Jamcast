@@ -1,5 +1,7 @@
 # JamCast
 
+![Go](https://github.com/silasary/Jamcast/workflows/Go/badge.svg)
+
 This is the client software for [JamHost](https://jamhost.org/). It enables attendees to stream their
 desktops to projectors set up at your event or game jam.
 
