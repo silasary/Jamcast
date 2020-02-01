@@ -816,6 +816,10 @@ namespace JamCast.Controller
                 {
                     suffix += " (Standby)";
                 }
+                if (_falconNineIsInStartup.Contains(client))
+                {
+                    suffix += " (Startup)";
+                }
                 status += client.ToString() + suffix + Environment.NewLine;
             }
 
