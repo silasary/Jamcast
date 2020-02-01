@@ -45,7 +45,7 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "v${{ env.VERSION }}"
           prerelease: false
-          title: "Latest"
+          title: "v${{ env.VERSION }}"
           files: |
             *.exe
       if: github.ref == 'refs/heads/master'
