@@ -24,14 +24,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     
-    - name: Generate build number
-      uses: einaregilsson/build-number@v2 
-      with:
-        token: ${{secrets.github_token}}
     - name: version
       shell: pwsh
       run: |
-        $version = "1.$env:BUILD_NUMBER.0"
+        $ts = [int][double]::Parse((Get-Date -UFormat %s))
+        $version = "1.$ts.0"
         echo "package main`n`nconst version = `"$version`"" > client\version.go
         echo "::set-env name=VERSION::$version"
     
