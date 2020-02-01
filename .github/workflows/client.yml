@@ -31,12 +31,12 @@ jobs:
     - name: version
       shell: pwsh
       run: |
-        $version = "1.$env:BUILD_NUMBER"
+        $version = "1.$env:BUILD_NUMBER.0"
         echo "package main`n`nconst version = `"$version`"" > client\version.go
         echo "::set-env name=VERSION::$version"
     
     - name: Build Windows
-      run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast-windows-amd64.exe -ldflags -H=windowsgui ./client
+      run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast-windows-amd64.exe -ldflags "-H=windowsgui -s -w" ./client
       shell: powershell
     
     - run: dir
