@@ -22,6 +22,8 @@ echo Icon - All Platforms - Cast
 type image\cast.png | go run github.com/cratonica/2goarray CastIdlePNG image > image\cast_all.go
 echo ResX - Windows
 go run github.com/akavel/rsrc -arch amd64 -ico image\icon.ico -manifest client\app.manifest -o client\rsrc.syso
-echo gRPC - Go SDK
-go get -u github.com/golang/protobuf/protoc-gen-go
-deps\protoc\bin\protoc --go_out=plugins=grpc:proto jamcast.proto
+echo Scene JSON
+type client\scene.json | go run github.com/cratonica/2goarray SceneJSON main > client\scene_json.go
+rem echo gRPC - Go SDK
+rem go get -u github.com/golang/protobuf/protoc-gen-go
+rem deps\protoc\bin\protoc --go_out=plugins=grpc:proto jamcast.proto

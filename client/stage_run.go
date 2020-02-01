@@ -110,7 +110,7 @@ func obsWriteAllProfiles(ipAddress string) bool {
 	var dirty bool
 	dirty = obsWriteProfile("Primary", ipAddress, 1234) || dirty
 	dirty = obsWriteProfile("Secondary", ipAddress, 1235) || dirty
-	dirty = obsWriteScene("Untitled") || dirty
+	dirty = obsWriteScene("JamCast") || dirty
 	return dirty
 }
 
@@ -160,8 +160,6 @@ func obsWriteProfile(suffix string, ipAddress string, port int) bool {
 	return false
 }
 
-const sceneConfiguration string = "{\r\n    \"DesktopAudioDevice1\": {\r\n        \"deinterlace_field_order\": 0,\r\n        \"deinterlace_mode\": 0,\r\n        \"enabled\": true,\r\n        \"flags\": 0,\r\n        \"hotkeys\": {\r\n            \"libobs.mute\": [],\r\n            \"libobs.push-to-mute\": [],\r\n            \"libobs.push-to-talk\": [],\r\n            \"libobs.unmute\": []\r\n        },\r\n        \"id\": \"wasapi_output_capture\",\r\n        \"mixers\": 255,\r\n        \"monitoring_type\": 0,\r\n        \"muted\": false,\r\n        \"name\": \"Desktop Audio\",\r\n        \"private_settings\": {},\r\n        \"push-to-mute\": false,\r\n        \"push-to-mute-delay\": 0,\r\n        \"push-to-talk\": false,\r\n        \"push-to-talk-delay\": 0,\r\n        \"settings\": {\r\n            \"device_id\": \"default\"\r\n        },\r\n        \"sync\": 0,\r\n        \"volume\": 1.0\r\n    },\r\n    \"current_program_scene\": \"Scene\",\r\n    \"current_scene\": \"Scene\",\r\n    \"current_transition\": \"Fade\",\r\n    \"modules\": {\r\n        \"auto-scene-switcher\": {\r\n            \"active\": false,\r\n            \"interval\": 300,\r\n            \"non_matching_scene\": \"\",\r\n            \"switch_if_not_matching\": false,\r\n            \"switches\": []\r\n        },\r\n        \"captions\": {\r\n            \"enabled\": false,\r\n            \"lang_id\": 1033,\r\n            \"provider\": \"mssapi\",\r\n            \"source\": \"\"\r\n        },\r\n        \"output-timer\": {\r\n            \"autoStartRecordTimer\": false,\r\n            \"autoStartStreamTimer\": false,\r\n            \"recordTimerHours\": 0,\r\n            \"recordTimerMinutes\": 0,\r\n            \"recordTimerSeconds\": 30,\r\n            \"streamTimerHours\": 0,\r\n            \"streamTimerMinutes\": 0,\r\n            \"streamTimerSeconds\": 30\r\n        },\r\n        \"scripts-tool\": []\r\n    },\r\n    \"name\": \"Untitled\",\r\n    \"preview_locked\": false,\r\n    \"quick_transitions\": [\r\n        {\r\n            \"duration\": 300,\r\n            \"hotkeys\": [],\r\n            \"id\": 1,\r\n            \"name\": \"Cut\"\r\n        },\r\n        {\r\n            \"duration\": 300,\r\n            \"hotkeys\": [],\r\n            \"id\": 2,\r\n            \"name\": \"Fade\"\r\n        }\r\n    ],\r\n    \"saved_multiview_projectors\": [\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_multiview_projectors\": 0\r\n        }\r\n    ],\r\n    \"saved_preview_projectors\": [\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_preview_projectors\": 0\r\n        }\r\n    ],\r\n    \"saved_projectors\": [\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        },\r\n        {\r\n            \"saved_projectors\": \"\"\r\n        }\r\n    ],\r\n    \"saved_studio_preview_projectors\": [\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        },\r\n        {\r\n            \"saved_studio_preview_projectors\": 0\r\n        }\r\n    ],\r\n    \"scaling_enabled\": false,\r\n    \"scaling_level\": 0,\r\n    \"scaling_off_x\": 0.0,\r\n    \"scaling_off_y\": 0.0,\r\n    \"scene_order\": [\r\n        {\r\n            \"name\": \"Scene\"\r\n        }\r\n    ],\r\n    \"sources\": [\r\n        {\r\n            \"deinterlace_field_order\": 0,\r\n            \"deinterlace_mode\": 0,\r\n            \"enabled\": true,\r\n            \"flags\": 0,\r\n            \"hotkeys\": {\r\n                \"OBSBasic.SelectScene\": [],\r\n                \"libobs.hide_scene_item.Display Capture\": [],\r\n                \"libobs.show_scene_item.Display Capture\": []\r\n            },\r\n            \"id\": \"scene\",\r\n            \"mixers\": 0,\r\n            \"monitoring_type\": 0,\r\n            \"muted\": false,\r\n            \"name\": \"Scene\",\r\n            \"private_settings\": {},\r\n            \"push-to-mute\": false,\r\n            \"push-to-mute-delay\": 0,\r\n            \"push-to-talk\": false,\r\n            \"push-to-talk-delay\": 0,\r\n            \"settings\": {\r\n                \"id_counter\": 1,\r\n                \"items\": [\r\n                    {\r\n                        \"align\": 5,\r\n                        \"bounds\": {\r\n                            \"x\": 0.0,\r\n                            \"y\": 0.0\r\n                        },\r\n                        \"bounds_align\": 0,\r\n                        \"bounds_type\": 0,\r\n                        \"crop_bottom\": 0,\r\n                        \"crop_left\": 0,\r\n                        \"crop_right\": 0,\r\n                        \"crop_top\": 0,\r\n                        \"id\": 1,\r\n                        \"locked\": false,\r\n                        \"name\": \"Display Capture\",\r\n                        \"pos\": {\r\n                            \"x\": 0.0,\r\n                            \"y\": 0.0\r\n                        },\r\n                        \"private_settings\": {},\r\n                        \"rot\": 0.0,\r\n                        \"scale\": {\r\n                            \"x\": 1.0,\r\n                            \"y\": 1.0\r\n                        },\r\n                        \"scale_filter\": \"disable\",\r\n                        \"visible\": true\r\n                    }\r\n                ]\r\n            },\r\n            \"sync\": 0,\r\n            \"volume\": 1.0\r\n        },\r\n        {\r\n            \"deinterlace_field_order\": 0,\r\n            \"deinterlace_mode\": 0,\r\n            \"enabled\": true,\r\n            \"flags\": 0,\r\n            \"hotkeys\": {},\r\n            \"id\": \"monitor_capture\",\r\n            \"mixers\": 0,\r\n            \"monitoring_type\": 0,\r\n            \"muted\": false,\r\n            \"name\": \"Display Capture\",\r\n            \"private_settings\": {},\r\n            \"push-to-mute\": false,\r\n            \"push-to-mute-delay\": 0,\r\n            \"push-to-talk\": false,\r\n            \"push-to-talk-delay\": 0,\r\n            \"settings\": {\r\n                \"monitor\": 1\r\n            },\r\n            \"sync\": 0,\r\n            \"volume\": 1.0\r\n        }\r\n    ],\r\n    \"transition_duration\": 300,\r\n    \"transitions\": []\r\n}"
-
 func obsWriteScene(name string) bool {
 	sceneDir := filepath.Join(
 		os.Getenv("APPDATA"),
@@ -171,9 +169,9 @@ func obsWriteScene(name string) bool {
 	)
 	os.MkdirAll(sceneDir, os.ModePerm)
 	sceneJson := filepath.Join(sceneDir, fmt.Sprintf("%s.json", name))
-	if data, err := ioutil.ReadFile(sceneJson); err != nil || string(data) != sceneConfiguration {
+	if data, err := ioutil.ReadFile(sceneJson); err != nil || string(data) != string(SceneJSON) {
 		log.Println("obs: writing scene configuration")
-		ioutil.WriteFile(sceneJson, []byte(sceneConfiguration), os.ModePerm)
+		ioutil.WriteFile(sceneJson, SceneJSON, os.ModePerm)
 		return true
 	}
 	return false
@@ -252,13 +250,13 @@ func manageOBS(token *jwt.Token) {
 				"64bit",
 				"obs64.exe",
 			),
+			"--minimize-to-tray",
 		)
 		cmd.Dir = filepath.Join(
 			download.GetOBSInstallPath(),
 			"bin",
 			"64bit",
 		)
-		platform.HideWindow(cmd)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -287,7 +285,7 @@ func acceptLicense() {
 		ini,
 		[]byte(
 			"[General]\r\nLicenseAccepted=true\r\nFirstRun=true\r\nEnableAutoUpdates=false\r\n"+
-				"[BasicWindow]\r\nSysTrayEnabled=false\r\n",
+				"[BasicWindow]\r\nSysTrayEnabled=true\r\n[Basic]\r\nSceneCollection=JamCast\r\nSceneCollectionFile=JamCast\r\n",
 		),
 		os.ModePerm,
 	)

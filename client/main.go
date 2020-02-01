@@ -20,8 +20,9 @@ var systrayReady chan bool
 const enableSystray = true
 
 func main() {
+
 	// split logs between stdout and our internal logging
-	log.SetOutput(io.MultiWriter(os.Stdout, logs.GetInMemoryLogBuffer()))
+	log.SetOutput(io.MultiWriter(logs.GetInMemoryLogBuffer(), os.Stdout))
 
 	shutdown.SetupShutdownGlobalHandler()
 

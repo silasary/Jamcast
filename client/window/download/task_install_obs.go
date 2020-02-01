@@ -2,45 +2,69 @@ package download
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"gitlab.com/redpointgames/jamcast/auth"
 	"gitlab.com/redpointgames/jamcast/env"
 )
+
+type downloadURLs struct {
+	OBSWindowsDownloadURL                string
+	OBSWebSocketPluginWindowsDownloadURL string
+}
 
 func taskDownloadOBS(callback func(label string, progress float64, infinite bool)) error {
 	callback("Checking for OBS and plugins...", 0, true)
 
+	log.Println("run: fetching download URLs")
+	downloadUrlsJson, err := auth.MakeRequest("/jamcast/downloadurls", url.Values{})
+	if err != nil {
+		log.Printf("error: can't fetch download URLs: %v", err)
+		return err
+	}
+	var d downloadURLs
+	err = json.Unmarshal([]byte(downloadUrlsJson), &d)
+	if err != nil {
+		log.Printf("error: can't unmarshal download URLs JSON: %v", err)
+		return err
+	}
+
+	log.Printf("download URLs are: %+v\n", d)
+
 	obsPath := GetOBSInstallPath()
-	obsPluginPath := filepath.Join(
+	obsWebSocketPluginPath := filepath.Join(
 		obsPath,
 		"obs-plugins",
 		"64bit",
 		"obs-websocket.dll",
 	)
-	obsDownloadPath := filepath.Join(env.GetAppPath(), "obs.zip")
-	obsPluginDownloadPath := filepath.Join(env.GetAppPath(), "obs-websocket.zip")
+	obsDownloadPath := filepath.Join(env.GetAppPath(), "obs-24.zip")
+	obsWebSocketPluginDownloadPath := filepath.Join(env.GetAppPath(), "obs-websocket.zip")
 
 	obsInstalled, err := pathExists(obsPath)
 	if err != nil {
 		return err
 	}
-	obsPluginInstalled, err := pathExists(obsPluginPath)
+	obsWebSocketPluginInstalled, err := pathExists(obsWebSocketPluginPath)
 	if err != nil {
 		return err
 	}
 
-	if obsInstalled && obsPluginInstalled {
-		callback("OBS and OBS plugins are installed.", 1, false)
+	if obsInstalled && obsWebSocketPluginInstalled {
+		callback("OBS and dependencies are installed.", 1, false)
 		return err
 	}
 
 	err = downloadAndUnpack(
-		"https://github.com/obsproject/obs-studio/releases/download/22.0.2/OBS-Studio-22.0.2-Full-x64.zip",
+		d.OBSWindowsDownloadURL,
 		obsDownloadPath,
 		obsPath,
 		func(op string, progress float64, infinite bool) {
@@ -52,8 +76,8 @@ func taskDownloadOBS(callback func(label string, progress float64, infinite bool
 	}
 
 	err = downloadAndUnpack(
-		"https://github.com/Palakis/obs-websocket/releases/download/4.5.0/obs-websocket-4.5.0-Windows.zip",
-		obsPluginDownloadPath,
+		d.OBSWebSocketPluginWindowsDownloadURL,
+		obsWebSocketPluginDownloadPath,
 		obsPath,
 		func(op string, progress float64, infinite bool) {
 			callback(fmt.Sprintf("%s OBS WebSocket plugin...", op), progress, infinite)
@@ -91,7 +115,11 @@ func (wc *progressMonitor) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-func download(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
+func download(url string, zipPath string, callback func(op string, progress float64, infinite bool)) error {
+	if url == "" {
+		return fmt.Errorf("no url provided")
+	}
+
 	out, err := os.Create(zipPath)
 	if err != nil {
 		return err
@@ -165,7 +193,7 @@ func unpack(url string, zipPath string, directory string, callback func(op strin
 func downloadAndUnpack(url string, zipPath string, directory string, callback func(op string, progress float64, infinite bool)) error {
 	didDownload := false
 	if exists, err := pathExists(zipPath); !exists || err != nil {
-		err = download(url, zipPath, directory, callback)
+		err = download(url, zipPath, callback)
 		if err != nil {
 			return err
 		}
