@@ -16,7 +16,8 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - uses: actions/cache@v1
+    - name: Cache dependencies
+      uses: actions/cache@v1
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -29,7 +30,7 @@ jobs:
         token: ${{secrets.github_token}}
     
     - name: Build Windows
-      run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast.exe -ldflags -H=windowsgui ./client
+      run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast-windows-amd64.exe -ldflags -H=windowsgui ./client
       shell: powershell
     
     - run: dir
