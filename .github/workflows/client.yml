@@ -28,6 +28,12 @@ jobs:
       uses: einaregilsson/build-number@v2 
       with:
         token: ${{secrets.github_token}}
+    - name: version
+      shell: pwsh
+      run: |
+        $version = "1.$env:BUILD_NUMBER"
+        echo "package main`n`nconst version = `"$version`"" > client\version.go
+        echo "::set-env name=VERSION::$version"
     
     - name: Build Windows
       run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast-windows-amd64.exe -ldflags -H=windowsgui ./client
@@ -37,7 +43,7 @@ jobs:
     - uses: "marvinpinto/action-automatic-releases@latest"
       with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "v1.${{ steps.buildnumber.outputs.build_number }}"
+          automatic_release_tag: "v${env:VERSION}"
           prerelease: false
           title: "Latest"
           files: |
