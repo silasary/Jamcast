@@ -30,7 +30,7 @@ func main() {
 	log.Println("performing self update check")
 
 	doSelfUpdate()
-	
+
 	log.Println("starting JamCast")
 
 	clientApp = app.New()
@@ -61,12 +61,12 @@ func main() {
 		stageIntro()
 	}()
 
-    go func() {
-        for {
-            doSelfUpdate()
-            time.Sleep(time.Second * 10)
-        }
-    }()
+	go func() {
+		for {
+			doSelfUpdate()
+			time.Sleep(time.Minute * 5)
+		}
+	}()
 
 	for {
 		clientApp.Run()
