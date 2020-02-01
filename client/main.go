@@ -16,7 +16,7 @@ import (
 
 var clientApp fyne.App
 var systrayReady chan bool
- 
+
 const enableSystray = true
 
 func main() {
@@ -54,6 +54,16 @@ func main() {
 	go func() {
 		stageIntro()
 	}()
+
+
+    doSelfUpdate()
+
+    go func() {
+        for {
+            doSelfUpdate()
+            time.Sleep(time.Second * 10)
+        }
+    }()
 
 	for {
 		clientApp.Run()
