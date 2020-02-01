@@ -16,6 +16,18 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Generate build number
+      uses: einaregilsson/build-number@v2 
+      with:
+        token: ${{secrets.github_token}}
+    
     - name: Build Windows
       run: $env:GOOS="windows"; $env:GOARCH="amd64"; go build -x -o ./JamCast.exe -ldflags -H=windowsgui ./client
       shell: powershell
@@ -24,7 +36,7 @@ jobs:
     - uses: "marvinpinto/action-automatic-releases@latest"
       with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "v${{ github.sha }}"
+          automatic_release_tag: "v1.${{ steps.buildnumber.outputs.build_number }}"
           prerelease: false
           title: "Latest"
           files: |
