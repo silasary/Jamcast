@@ -5,3 +5,5 @@
 controller/.vs/
 controller/JamCast.Controller/bin/
 controller/JamCast.Controller/obj/
+*.csproj.user
+.vs/
