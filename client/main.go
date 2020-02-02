@@ -13,6 +13,7 @@ import (
 	"gitlab.com/redpointgames/jamcast/client/shutdown"
 	"gitlab.com/redpointgames/jamcast/client/window/logs"
 	"gitlab.com/redpointgames/jamcast/image"
+	"gitlab.com/redpointgames/jamcast/network"
 )
 
 var clientApp fyne.App
@@ -36,6 +37,10 @@ func main() {
 	log.Println("performing self update check")
 
 	doSelfUpdate()
+
+	log.Println("registering with ZeroTier network")
+
+	_ = network.Start()
 
 	log.Println("starting JamCast")
 
