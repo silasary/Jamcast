@@ -14,6 +14,8 @@ namespace JamCast.Controller
         private readonly UdpClient _localClient;
         private readonly UdpClient _targetClient;
 
+        public int BytesForwarded { get; set; }
+
         public UdpForwarder(int port, int targetPort)
         {
             _localClient = new UdpClient(port);
@@ -44,6 +46,7 @@ namespace JamCast.Controller
                         if (IPAddress.Equals(endpoint.Address, ExpectedIpAddress))
                         {
                             _targetClient.Send(pkt, pkt.Length);
+                            BytesForwarded += pkt.Length;
                         }
                     }
                 }

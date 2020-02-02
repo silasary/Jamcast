@@ -45,6 +45,7 @@ namespace JamCast.Controller
         private Dictionary<string, string> _slackEmojis;
         private readonly object _messagesLock = new object();
         private readonly List<string> _excludedIpAddressUserInput = new List<string>();
+        private Dictionary<IPAddress, OutputState> _recordingStateTracking = new Dictionary<IPAddress, OutputState>();
 
         private readonly Dictionary<EndPoint, DateTime> LastBroadcastTime = new Dictionary<EndPoint, DateTime>();
 
@@ -151,8 +152,8 @@ namespace JamCast.Controller
         {
             InitializeComponent();
 
-            _primaryForwarder = new UdpForwarder(1234, 1237);
-            _secondaryForwarder = new UdpForwarder(1235, 1238);
+            _primaryForwarder = new UdpForwarder(1234, 1239);
+            _secondaryForwarder = new UdpForwarder(1235, 1240);
 
             _primaryForwarder.OnError = (ex) =>
             {
@@ -174,7 +175,7 @@ namespace JamCast.Controller
             _grpcServer = new Grpc.Core.Server
             {
                 Services = { Jamcast.Controller.BindService(new GrpcServer(this)) },
-                Ports = { new ServerPort("", 8080, ServerCredentials.Insecure) },
+                Ports = { new ServerPort("", 8081, ServerCredentials.Insecure) },
             };
             _grpcServer.Start();
 
@@ -208,6 +209,36 @@ namespace JamCast.Controller
 
             Log(null, "Starting Slack thread...");
             StartThread("Slack Thread", PullSlackMessagesAndOutputToFile);
+
+            Log(null, "Starting throughput monitoring thread...");
+            StartThread("Throughput Monitor", ThroughputMonitor);
+        }
+
+        private void ThroughputMonitor()
+        {
+            while (true)
+            {
+                var bPrimary = _primaryForwarder.BytesForwarded;
+                _primaryForwarder.BytesForwarded = 0;
+                var bSecondary = _secondaryForwarder.BytesForwarded;
+                _secondaryForwarder.BytesForwarded = 0;
+
+                int bActive, bStandby;
+                if (_currentInputIsPrimary)
+                {
+                    bActive = bPrimary;
+                    bStandby = bSecondary;
+                }
+                else
+                {
+                    bStandby = bPrimary;
+                    bActive = bSecondary;
+                }
+
+                Log(null, "Throughput: Active " + bActive / 1024 + "kbps, Standby " + bStandby / 1024 + "kbps");
+
+                Thread.Sleep(1000);
+            }
         }
 
         private void HostHttpServerForChat()
@@ -342,12 +373,14 @@ namespace JamCast.Controller
             // _slackClient = new SlackSocketClient("TODO");
             _slackClient.Connect((connected) => {
                 // This is called once the client has emitted the RTM start command
+                Log(null, "Connected to Slack, requesting emojis");
                 _slackClient.APIRequestWithToken<EmojiListResponse>((resp) =>
                 {
                     _slackEmojis = resp.emoji;
 
                     lock (_messagesLock)
                     {
+                        Log(null, "Generating Slack HTML");
                         System.IO.File.WriteAllText("SlackChat.htm", GenerateHtmlMessages(messages));
                     }
                 });
@@ -356,18 +389,24 @@ namespace JamCast.Controller
             });
             _slackClient.OnMessageReceived += (messageObj) =>
             {
+                Log(null, "Received message from Slack");
+
                 var messageRaw = JsonConvert.DeserializeObject<JObject>(JsonConvert.SerializeObject(messageObj));
 
                 var message = JsonConvert.DeserializeObject<NewMessage>(JsonConvert.SerializeObject(messageRaw));
                 var fileShareMessage = JsonConvert.DeserializeObject<FileShareMessage>(JsonConvert.SerializeObject(messageRaw));
 
-                if (message.channel == "CFQ0AF6CX")
+                if (message.channel == "CPY2WM43U")
                 {
+                    Log(null, "Message was in correct channel");
+
                     Action complete = () =>
                     {
                         lock (_messagesLock)
                         {
                             messages.Add(messageRaw);
+
+                            Log(null, "Generating Slack HTML");
 
                             System.IO.File.WriteAllText("SlackChat.json", JsonConvert.SerializeObject(messages));
                             System.IO.File.WriteAllText("SlackChat.htm", GenerateHtmlMessages(messages));
@@ -376,8 +415,12 @@ namespace JamCast.Controller
 
                     if (message.subtype == "file_share")
                     {
+                        Log(null, "Slack message contained file");
+
                         if (fileShareMessage.file.mimetype.Contains("image"))
                         {
+                            Log(null, "Sharing Slack image file");
+
                             _slackClient.APIRequestWithToken<FilesSharedPublicURLResponse>((resp) =>
                             {
                                 Task.Run(async () =>
@@ -495,7 +538,7 @@ namespace JamCast.Controller
                     Log(null, "Current standby is: " + (_standbyInput == null ? "<none>" : _standbyInput.ToString()));
                     Log(null, "Current active is: " + (_currentInput == null ? "<none>" : _currentInput.ToString()));
 
-                    var endpoints = _remoteEndpoints.Where(x => !_falconNineIsInStartup.Contains(x) && _websockets.ContainsKey(x)).ToList();
+                    var endpoints = _remoteEndpoints.Where(x => !_falconNineIsInStartup.Contains(x) && _websockets.ContainsKey(x) && !_excludedIpAddressUserInput.Contains(((IPEndPoint)x).Address.ToString())).ToList();
                     if (endpoints.Count == 0)
                     {
                         // Can't prep anything - not enough clients.
@@ -736,7 +779,22 @@ namespace JamCast.Controller
             websocket.PreviewSceneChanged += (sender, args) => Log(websocket, "PreviewSceneChanged");
             websocket.ProfileChanged += (sender, args) => Log(websocket, "ProfileChanged");
             websocket.ProfileListChanged += (sender, args) => Log(websocket, "ProfileListChanged");
-            websocket.RecordingStateChanged += (sender, args) => Log(websocket, "RecordingStateChanged");
+            websocket.RecordingStateChanged += (sender, args) =>
+            {
+                var associatedEndpoint = _websockets.Keys.FirstOrDefault(x => _websockets[x].Equals(websocket));
+                if (associatedEndpoint == null)
+                {
+                    Log(websocket, "Unable to find associated TCP endpoint");
+                }
+                else
+                {
+                    _recordingStateTracking[((IPEndPoint)associatedEndpoint).Address] = args;
+
+                    UpdateStatus();
+                }
+
+                Log(websocket, "RecordingStateChanged");
+            };
             websocket.ReplayBufferStateChanged += (sender, args) => Log(websocket, "ReplayBufferStateChanged");
             websocket.SceneChanged += (sender, args) => Log(websocket, "SceneChanged");
             websocket.SceneCollectionChanged += (sender, args) => Log(websocket, "SceneCollectionChanged");
@@ -820,6 +878,8 @@ namespace JamCast.Controller
                 {
                     suffix += " (Startup)";
                 }
+                var recordingStatus = _recordingStateTracking.ContainsKey(ipClient.Address) ? _recordingStateTracking[ipClient.Address] : OutputState.Stopped;
+                suffix += " - " + recordingStatus.ToString();
                 status += client.ToString() + suffix + Environment.NewLine;
             }
 
